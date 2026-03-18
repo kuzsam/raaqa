@@ -1,0 +1,25 @@
+# RAAQA — Read Alignment-based Assembly Quality Assessment
+# Exact versions used during development - minimum requirements not yet verified
+
+name: raaqa
+channels:
+  - bioconda
+  - conda-forge
+  - defaults
+dependencies:
+  # --- Python ---
+  - python=3.10.18
+
+  # --- Core tool dependency ---
+  - pysam=0.23.3
+
+  # --- Visualisation module dependencies ---
+  # - matplotlib-base=3.10.7
+  # - pandas=2.3.3
+  # - numpy=2.2.6
+
+  # --- Preprocessing tools ---
+  # Required to generate inputs for mapq_softclip module:
+  - samtools=1.22.1
+  # Required to generate inputs for hese module:
+  #

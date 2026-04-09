@@ -143,6 +143,8 @@ def _accumulate_read_into_windows(read, windows, mapq, chrom_hist):
     rpos = read.reference_start
 
     q = min(MAX_MAPQ, int(round(mapq)))
+    if q == 255:
+        q = 0
 
     # windows must be sorted by start index
     windows = sorted(windows, key=lambda w: w["start"])

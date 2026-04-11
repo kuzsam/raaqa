@@ -8,6 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - Output directory prefix is now derived from the BAM filename instead of a `mapq_softclip` prefix
+- `environment.yml` now uses `conda-forge` and `bioconda` channels only with `nodefaults` — removes dependency conflicts caused by mixing with the `defaults` channel
 - Default window size changed to 5 kb
 - Default step size changed to 2.5 kb
 - Validation error messages clarity

@@ -55,8 +55,8 @@ options:
   -v, --version         show program version and exit
   -b, --bam BAM         BAM file (required)
   -i, --bai BAI         BAM index file (.bai) — defaults to BAM path + .bai
-  -w, --window WINDOW   window size in kb (default: 80)
-  -s, --step STEP       step size in kb (default: 20)
+  -w, --window WINDOW   window size in kb (default: 5)
+  -s, --step STEP       step size in kb (default: 2.5)
   -t, --threads THREADS number of parallel contig workers (default: 1)
 ```
  
@@ -71,7 +71,7 @@ python mapq_softclip.py -b file.bam -w 10 -s 2.5 -t 8
 All output is written to a timestamped folder in the current working directory:
  
 ```
-mapq_softclip_(window)kb_(step)kb_(date)_(time)/
+(bam name)_mapq_softc_(window)kb_(step)kb_(date)_(time)/
     window_stats.csv          # per-window statistics across all contigs
     summary_stats.csv         # per-contig and genome-wide summary
     contigs/
@@ -130,7 +130,6 @@ available.
 - **Phasing quality module** — Hamming and switch error assessment for hifiasm
   trio assemblies using parental read mappings
 - Per-contig selection mode
-- `--output-dir` argument
  
 ---
  

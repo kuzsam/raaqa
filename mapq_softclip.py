@@ -4,7 +4,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 MAX_MAPQ = 255
 HTSLIB_THREADS_PER_WORKER = 4
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 
 # ------------------ Argument Parsing & Validation -------------------
 def parse_arguments():
@@ -12,8 +12,8 @@ def parse_arguments():
     parser.add_argument("-v", "--version", action="version", version=f"%(prog)s {VERSION}")
     parser.add_argument("-b", "--bam", required=True, help="BAM file")
     parser.add_argument("-i", "--bai", default=None, help="BAM index file (.bai)")
-    parser.add_argument("-w", "--window", type=float, default=80.0, help="Window size in kb (default=80)")
-    parser.add_argument("-s", "--step", type=float, default=20.0, help="Step size in kb (default=20)")
+    parser.add_argument("-w", "--window", type=float, default=5, help="Window size in kb (default=5)")
+    parser.add_argument("-s", "--step", type=float, default=2.5, help="Step size in kb (default=2.5)")
     parser.add_argument("-t", "--threads", type=int, default=1, help="Max number of parallel contig workers/threads (default=1)")
     return parser.parse_args()
 
@@ -23,11 +23,11 @@ def validate_inputs(bai_file, args):
     if not os.path.exists(bai_file):
         sys.exit(f"Error: BAM index not found: {bai_file}\nPlease run: samtools index {args.bam}")
     if args.window <= 0:
-        sys.exit(f"Error: Window size must be greater than 0, got {args.window} kb")
+        sys.exit(f"Error: Window size (-w/--window) must be greater than 0, got {args.window} kb")
     if args.step <= 0:
-        sys.exit(f"Error: Step size must be greater than 0, got {args.step} kb")
+        sys.exit(f"Error: Step size (-s/--step) must be greater than 0, got {args.step} kb")
     if args.threads <= 0:
-        sys.exit(f"Error: Number of threads must be greater than 0, got {args.threads}")
+        sys.exit(f"Error: Number of threads (-t/--threads) must be greater than 0, got {args.threads}")
     if args.step > args.window:
         print(f"[WARN] Step size ({args.step} kb) is larger than window size ({args.window} kb) — "
               f"regions between windows will not be covered and results will not be genome-wide complete")
@@ -41,10 +41,11 @@ def _format_kb_value(value):
 def _sanitise_filename(name):
     return re.sub(r'[^\w.\-]', '_', name)
 
-def prepare_output_dirs(window, step):
+def prepare_output_dirs(bam_file, window, step):
+    prefix = os.path.splitext(os.path.basename(bam_file))[0]
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    folder = f"mapq_softclip_{_format_kb_value(window)}kb_{_format_kb_value(step)}kb_{timestamp}"
+    folder = f"{prefix}_mapq_softc_{_format_kb_value(window)}kb_{_format_kb_value(step)}kb_{timestamp}"
     os.makedirs(folder, exist_ok=True)
 
     contigs_folder = os.path.join(folder, "contigs")
@@ -446,7 +447,7 @@ def main():
     bam_index = args.bai if args.bai else args.bam + ".bai"
     validate_inputs(bam_index, args)
 
-    folder, contigs_folder, window_file, summary_file = prepare_output_dirs(args.window, args.step)
+    folder, contigs_folder, window_file, summary_file = prepare_output_dirs(args.bam, args.window, args.step)
     print(f"Output folder: {folder}")
     print(f"Window size: {args.window} kb | Step size: {args.step} kb")
 

@@ -345,9 +345,14 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
     total_windows_created_overall = 0
     global_hist = [0] * (MAX_MAPQ + 1)
 
-    with pysam.AlignmentFile(bam_file, "rb", index_filename=bam_index) as bam:
-        references = list(zip(bam.references, bam.lengths))
-    
+    try:
+        with pysam.AlignmentFile(bam_file, "rb", index_filename=bam_index) as bam:
+            references = list(zip(bam.references, bam.lengths))
+    except ValueError as e:
+        sys.exit(f"Error: BAM file '{bam_file}' could not be parsed — file may be malformed or truncated: {e}")
+    except OSError as e:
+        sys.exit(f"Error: BAM file '{bam_file}' could not be opened: {e}")
+
     if len(references) == 0:
         sys.exit("Error: BAM file contains no reference sequences — file may be unmapped or malformed")
 

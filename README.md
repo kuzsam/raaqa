@@ -32,8 +32,8 @@ conda activate raaqa
  
 | Module | Description | Status |
 |---|---|---|
-| `mapq_softclip.py` | Sliding-window MAPQ and soft-clip assessment | Available|
-| `visualise.py` | Figures and plots from analytical module outputs | Coming soon |
+| `mapq_softclip.py` | Sliding-window MAPQ and soft-clip assessment | Available |
+| `visualise.py` | Figures and plots from analytical module outputs | Available (for mapq_softclip) |
 | `hese.py` | Phasing quality assessment for hifiasm trio assemblies | Coming soon |
  
 ---
@@ -109,10 +109,66 @@ All output is written to a timestamped folder in the current working directory:
 
 ---
 
-## `visualise` *(coming soon)*
- 
-Generates figures and plots from the outputs of the analytical modules.
- 
+## `visualise`
+
+Generates figures and plots from the outputs of the analytical modules. Currently supports `mapq_softclip` output.
+
+### Options
+
+```
+usage: visualise.py [-h] [-v] -m MODULE -i INPUT [-f FIGURES] [-r ROLLING]
+
+options:
+  -h, --help               show this help message and exit
+  -v, --version            show program version and exit
+  -m, --module MODULE      which module's output to visualise: mapq_softclip
+  -i, --input INPUT        path to the output folder from the module run
+  -f, --figures FIGURES    figures to generate: genome | contigs | all (default: all)
+  -r, --rolling ROLLING    rolling mean window in kb for rolling figures (default: 1000)
+```
+
+### Example
+
+```bash
+python visualise.py -m mapq_softclip -i mapq_softc_output_folder/ -f all -r 500
+```
+
+### Output
+
+All figures are written to a `figures/` subfolder inside the input directory:
+
+```
+figures/
+    genome_summary.png                          # genome-wide 3-panel summary
+    contigs/
+        raw/
+            (contig name)_per_window_raw.png    # raw per-window 4-panel per contig
+        rolling/
+            (contig name)_per_window_rolling.png  # rolling mean 3-panel per contig
+```
+
+#### `genome_summary.png`
+
+Three stacked panels, one data point per contig at the contig midpoint:
+- **1** — mean and median coverage per contig
+- **2** — mean and median MAPQ per contig
+- **3** — softclip % per contig
+
+#### `(contig)_per_window_raw.png`
+
+Four stacked panels showing raw per-window values across the contig:
+- **1** — coverage depth per window, P99 clipping with overflow markers
+- **2** — median MAPQ per window
+- **3** — mean MAPQ per window
+- **4** — softclip % per window
+
+#### `(contig)_per_window_rolling.png`
+
+Three stacked panels showing rolling mean values across the contig:
+- **1** — rolling mean coverage
+- **2** — rolling mean and median MAPQ
+- **3** — rolling mean softclip %
+
 ---
 
 ## `hese` *(coming soon)*
@@ -125,10 +181,10 @@ available.
 ---
  
 ## Roadmap
- 
-- **Visualisation module** — figures and plots from analytical module outputs
+
 - **Phasing quality module** — Hamming and switch error assessment for hifiasm
   trio assemblies using parental read mappings
+- **Visualise hese support** — extend visualise module to support hese output
 - Per-contig selection mode
  
 ---

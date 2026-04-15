@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.2.0] - unreleased
+
+### Added
+- `visualise` module — generates genome-wide summary and per-contig figures from `mapq_softclip` output
+- Genome-wide 3-panel figure: coverage, MAPQ, and softclip % per contig
+- Per-contig raw 4-panel figure: coverage, median MAPQ, mean MAPQ, and softclip % per window
+- Per-contig rolling mean 3-panel figure: rolling mean coverage, MAPQ, and softclip %
+
+### Fixed
+- `mapq_softclip`: reads with no MAPQ value are now excluded from the MAPQ histogram
+- `mapq_softclip`: NaN values in CSV outputs now written as empty fields instead of `nan` strings
+- `mapq_softclip`: `ProcessPoolExecutor` prevents worker leak on unexpected exceptions
+- `mapq_softclip`: malformed or truncated BAM files produce a clearer error message
+
+### Changed
+- `environment.yml` updated with `visualise` module dependencies: `matplotlib-base`, `pandas`, `numpy`
+
+---
+
 ## [0.1.1] - unreleased
 
 ### Changed

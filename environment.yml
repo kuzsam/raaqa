@@ -12,9 +12,9 @@ dependencies:
   - pysam>=0.22.0
 
   # --- Visualisation module dependencies ---
-  # - matplotlib-base
-  # - pandas
-  # - numpy
+  - matplotlib-base>=3.8
+  - pandas>=2.0
+  - numpy>=1.26
 
   # --- Preprocessing tools ---
   # Required to generate inputs for mapq_softclip module:

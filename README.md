@@ -143,8 +143,10 @@ figures/
     contigs/
         raw/
             (contig name)_per_window_raw.png    # raw per-window 4-panel per contig
+            ...
         rolling/
             (contig name)_per_window_rolling.png  # rolling mean 3-panel per contig
+            ...
 ```
 
 #### `genome_summary.png`

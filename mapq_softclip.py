@@ -4,6 +4,8 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 MAX_MAPQ = 255
 HTSLIB_THREADS_PER_WORKER = 4
+MIN_WINDOW_KB = 1
+MAX_WINDOW_KB = 1_000_000
 try:
     VERSION = open(os.path.join(os.path.dirname(__file__), "VERSION")).read().strip()
 except Exception:
@@ -25,10 +27,17 @@ def validate_inputs(bai_file, args):
         sys.exit(f"Error: BAM file not found: {args.bam}")
     if not os.path.exists(bai_file):
         sys.exit(f"Error: BAM index not found: {bai_file}\nPlease run: samtools index {args.bam}")
-    if args.window <= 0:
-        sys.exit(f"Error: Window size (-w/--window) must be greater than 0, got {args.window} kb")
-    if args.step <= 0:
-        sys.exit(f"Error: Step size (-s/--step) must be greater than 0, got {args.step} kb")
+
+    for flag, val in (("-w/--window", args.window), ("-s/--step", args.step)):
+        if math.isnan(val) or math.isinf(val):
+            sys.exit(f"Error: {flag} must be a finite number, got {val}")
+        if val <= 0:
+            sys.exit(f"Error: {flag} must be greater than 0, got {val} kb")
+        if val < MIN_WINDOW_KB:
+            sys.exit(f"Error: {flag} must be at least {MIN_WINDOW_KB} kb, got {val} kb")
+        if val > MAX_WINDOW_KB:
+            sys.exit(f"Error: {flag} exceeds maximum allowed value of {MAX_WINDOW_KB:,} kb, got {val} kb")
+
     if args.threads <= 0:
         sys.exit(f"Error: Number of threads (-t/--threads) must be greater than 0, got {args.threads}")
     if args.step > args.window:

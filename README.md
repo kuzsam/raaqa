@@ -93,6 +93,17 @@ All output is written to a timestamped folder in the current working directory:
 | Total_Bases | Total aligned bases in the window |
 | Softclip_Bases | Total soft-clipped bases anchored to the window |
 | Softclip_% | Soft-clipped bases as a percentage of total bases |
+| Flag | Quality flag(s) for the window — empty if no issues detected (see below) |
+
+#### Window flags
+
+Flags are written as pipe-separated values when multiple conditions apply (e.g. `LOW_COVERAGE|LOW_DEPTH`).
+
+| Flag | Condition |
+|---|---|
+| `NO_COVERAGE` | Zero reads overlapping the window |
+| `LOW_COVERAGE` | Read count > 0 but below 5 reads |
+| `LOW_DEPTH` | Base-weighted depth (Total_Bases / window size) below 5x |
  
 #### `summary_stats.csv` columns
  

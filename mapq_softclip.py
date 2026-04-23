@@ -6,6 +6,8 @@ MAX_MAPQ = 255
 HTSLIB_THREADS_PER_WORKER = 4
 MIN_WINDOW_KB = 1
 MAX_WINDOW_KB = 1_000_000
+LOW_COVERAGE_READ_THRESHOLD = 5
+LOW_DEPTH_THRESHOLD = 5.0
 try:
     VERSION = open(os.path.join(os.path.dirname(__file__), "VERSION")).read().strip()
 except Exception:
@@ -144,10 +146,19 @@ def _flush_window_to_csv(w, chrom, window_writer):
         median_mapq = compute_median_from_hist(w["hist"])
 
     softclip_pct = (w["softclip_bases"] / w["total_bases"] * 100) if w["total_bases"] > 0 else math.nan
+    if w["read_count"] == 0:
+        flag = "NO_COVERAGE"
+    else:
+        flags = []
+        if w["read_count"] < LOW_COVERAGE_READ_THRESHOLD:
+            flags.append("LOW_COVERAGE")
+        if w["total_bases"] / (w["end"] - w["start"]) < LOW_DEPTH_THRESHOLD:
+            flags.append("LOW_DEPTH")
+        flag = "|".join(flags)
 
     window_writer.writerow([chrom, w["start"], w["end"], _format_or_empty(mean_mapq, ".2f"),
                             _format_or_empty(median_mapq), w["read_count"], w["total_bases"],
-                            w["softclip_bases"], _format_or_empty(softclip_pct, ".5f")])
+                            w["softclip_bases"], _format_or_empty(softclip_pct, ".5f"), flag])
 
 # --------------------- Read & Contig Processing ---------------------
 def _accumulate_read_into_windows(read, windows, mapq, chrom_hist):
@@ -331,7 +342,7 @@ def _run_contig_worker(bam_file, bam_index, chrom, chrom_len, window_bp, step_bp
 
         window_writer = csv.writer(win_f)
         window_writer.writerow(["Chromosome", "Start", "End", "Mean_MAPQ", "Median_MAPQ",
-                                "Read_Count", "Total_Bases", "Softclip_Bases", "Softclip_%"])
+                                "Read_Count", "Total_Bases", "Softclip_Bases", "Softclip_%", "Flag"])
 
         summary_writer = csv.writer(sum_f)
         summary_writer.writerow(["Chromosome", "Mean_MAPQ", "Median_MAPQ", "Reads_Seen",
@@ -421,7 +432,7 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
     with open(window_file, "w", newline="") as win_out:
         window_writer = csv.writer(win_out)
         window_writer.writerow(["Chromosome", "Start", "End", "Mean_MAPQ", "Median_MAPQ",
-                                "Read_Count", "Total_Bases", "Softclip_Bases", "Softclip_%"])
+                                "Read_Count", "Total_Bases", "Softclip_Bases", "Softclip_%", "Flag"])
         
         for chrom, _ in references:
             per_path = os.path.join(contigs_folder, f"{_sanitise_filename(chrom)}.windows.csv")

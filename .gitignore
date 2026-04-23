@@ -21,8 +21,20 @@ venv/
 *.ipynb
 
 # Tool outputs
+*_mapq_softc_*/
 mapq_softclip_*/
 raaqa_*/
+figures/
+plots/
+
+# Figures
+*.png
+*.pdf
+*.jpeg
+*.jpg
+
+# Logs
+*.log
 
 # Data files
 *.bam

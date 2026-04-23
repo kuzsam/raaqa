@@ -80,8 +80,9 @@ All output is written to a timestamped folder in the current working directory:
         ...
 ```
  
-#### `window_stats.csv` columns
- 
+<details>
+<summary><code>window_stats.csv</code> columns</summary>
+
 | Column | Description |
 |---|---|
 | Chromosome | Contig name from BAM header |
@@ -93,20 +94,21 @@ All output is written to a timestamped folder in the current working directory:
 | Total_Bases | Total aligned bases in the window |
 | Softclip_Bases | Total soft-clipped bases anchored to the window |
 | Softclip_% | Soft-clipped bases as a percentage of total bases |
-| Flag | Quality flag(s) for the window — empty if no issues detected (see below) |
+| Flag | Quality flag(s) for the window — empty if no issues detected |
 
-#### Window flags
-
-Flags are written as pipe-separated values when multiple conditions apply (e.g. `LOW_COVERAGE|LOW_DEPTH`).
+Flags are pipe-separated when multiple conditions apply (e.g. `LOW_COVERAGE|LOW_DEPTH`):
 
 | Flag | Condition |
 |---|---|
 | `NO_COVERAGE` | Zero reads overlapping the window |
 | `LOW_COVERAGE` | Read count > 0 but below 5 reads |
 | `LOW_DEPTH` | Base-weighted depth (Total_Bases / window size) below 5x |
- 
-#### `summary_stats.csv` columns
- 
+
+</details>
+
+<details>
+<summary><code>summary_stats.csv</code> columns</summary>
+
 | Column | Description |
 |---|---|
 | Chromosome | Contig name, or `GENOME` for the genome-wide row |
@@ -117,6 +119,8 @@ Flags are written as pipe-separated values when multiple conditions apply (e.g. 
 | Softclip_Bases | Total soft-clipped bases |
 | Softclip_% | Soft-clipped bases as a percentage of total bases |
 | Windows_Created | Number of windows created for this contig or genome |
+
+</details>
 
 ---
 
@@ -160,27 +164,26 @@ figures/
             ...
 ```
 
-#### `genome_summary.png`
+<details>
+<summary>Figure descriptions</summary>
 
-Three stacked panels, one data point per contig at the contig midpoint:
+**`genome_summary.png`** — three stacked panels, one data point per contig at the contig midpoint:
 - **1** — mean and median coverage per contig
 - **2** — mean and median MAPQ per contig
 - **3** — softclip % per contig
 
-#### `(contig)_per_window_raw.png`
-
-Four stacked panels showing raw per-window values across the contig:
+**`(contig)_per_window_raw.png`** — four stacked panels showing raw per-window values across the contig:
 - **1** — coverage depth per window, P99 clipping with overflow markers
 - **2** — median MAPQ per window
 - **3** — mean MAPQ per window
 - **4** — softclip % per window
 
-#### `(contig)_per_window_rolling.png`
-
-Three stacked panels showing rolling mean values across the contig:
+**`(contig)_per_window_rolling.png`** — three stacked panels showing rolling mean values across the contig:
 - **1** — rolling mean coverage
 - **2** — rolling mean and median MAPQ
 - **3** — rolling mean softclip %
+
+</details>
 
 ---
 

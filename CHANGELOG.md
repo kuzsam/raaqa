@@ -27,6 +27,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - `environment.yml` updated with `visualise` module dependencies: `matplotlib-base`, `pandas`, `numpy`
+- `environment.yml` updated with testing dependency `pytest`
+- tool modules can now be run from anywhere (<s>`python mapq_softclip.py`</s> &rarr; `mapq_softclip`)
 
 ---
 

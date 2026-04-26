@@ -23,6 +23,7 @@ git clone https://github.com/kuzsam/raaqa.git
 cd raaqa
 conda env create -f environment.yml
 conda activate raaqa
+pip install -e .
 ```
  
 ---
@@ -48,7 +49,7 @@ quality profiles at the window, contig, and genome-wide level.
 ### Options
  
 ```
-usage: mapq_softclip.py [-h] [-v] -b BAM [-i BAI] [-w WINDOW] [-s STEP] [-t THREADS]
+usage: mapq_softclip [-h] [-v] -b BAM [-i BAI] [-w WINDOW] [-s STEP] [-t THREADS]
  
 options:
   -h, --help            show this help message and exit
@@ -63,7 +64,7 @@ options:
 ### Example
  
 ```bash
-python mapq_softclip.py -b file.bam -w 10 -s 2.5 -t 8
+mapq_softclip -b file.bam -w 10 -s 2.5 -t 8
 ```
  
 ### Output
@@ -131,7 +132,7 @@ Generates figures and plots from the outputs of the analytical modules. Currentl
 ### Options
 
 ```
-usage: visualise.py [-h] [-v] -m MODULE -i INPUT [-f FIGURES] [-r ROLLING]
+usage: visualise [-h] [-v] -m MODULE -i INPUT [-f FIGURES] [-r ROLLING]
 
 options:
   -h, --help               show this help message and exit
@@ -145,7 +146,7 @@ options:
 ### Example
 
 ```bash
-python visualise.py -m mapq_softclip -i mapq_softc_output_folder/ -f all -r 500
+visualise -m mapq_softclip -i mapq_softc_output_folder/ -f all -r 500
 ```
 
 ### Output
@@ -201,7 +202,6 @@ available.
 - **Phasing quality module** — Hamming and switch error assessment for hifiasm
   trio assemblies using parental read mappings
 - **Visualise hese support** — extend visualise module to support hese output
-- Per-contig selection mode
  
 ---
  

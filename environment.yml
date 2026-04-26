@@ -8,13 +8,16 @@ channels:
 dependencies:
   - python>=3.10
 
-  # --- Core mapq_softc module dependency ---
+  # --- Mapq_softclip module dependency ---
   - pysam>=0.22.0
 
-  # --- Visualisation module dependencies ---
+  # --- Visualise module dependencies ---
   - matplotlib-base>=3.8
   - pandas>=2.0
   - numpy>=1.26
+
+  # --- Testing ---
+  - pytest>=7.0
 
   # --- Preprocessing tools ---
   # Required to generate inputs for mapq_softclip module:

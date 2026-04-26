@@ -8,9 +8,10 @@ import matplotlib.ticker as ticker
 import numpy as np
 
 try:
-    VERSION = open(os.path.join(os.path.dirname(__file__), "VERSION")).read().strip()
+    from importlib.metadata import version
+    VERSION = version("raaqa")
 except Exception:
-    VERSION = "unknown (VERSION file not found)"
+    VERSION = "unknown"
 
 BG        = "#ffffff"   # figure background
 AX_BG     = "#f6f8fa"   # axes background

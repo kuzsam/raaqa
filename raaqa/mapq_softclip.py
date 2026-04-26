@@ -9,9 +9,10 @@ MAX_WINDOW_KB = 1_000_000
 LOW_COVERAGE_READ_THRESHOLD = 5
 LOW_DEPTH_THRESHOLD = 5.0
 try:
-    VERSION = open(os.path.join(os.path.dirname(__file__), "VERSION")).read().strip()
+    from importlib.metadata import version
+    VERSION = version("raaqa")
 except Exception:
-    VERSION = "unknown (VERSION file not found)"
+    VERSION = "unknown"
 
 # ------------------ Argument Parsing & Validation -------------------
 def parse_arguments():

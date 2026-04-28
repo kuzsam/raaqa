@@ -1,4 +1,11 @@
-import pysam, datetime, csv, argparse, os, sys, math, re
+import pysam
+import datetime
+import csv
+import argparse
+import os
+import sys
+import math
+import re
 from collections import deque
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
@@ -14,16 +21,21 @@ try:
 except Exception:
     VERSION = "unknown"
 
+
 # ------------------ Argument Parsing & Validation -------------------
 def parse_arguments():
-    parser = argparse.ArgumentParser(description="Compute MAPQ and softclip statistics in sliding windows from a BAM file.")
+    parser = argparse.ArgumentParser(
+        description="Compute MAPQ and softclip statistics in sliding windows from a BAM file."
+    )
     parser.add_argument("-v", "--version", action="version", version=f"RAAQA: {VERSION}")
     parser.add_argument("-b", "--bam", required=True, help="BAM file")
     parser.add_argument("-i", "--bai", default=None, help="BAM index file (.bai)")
     parser.add_argument("-w", "--window", type=float, default=5, help="Window size in kb (default=5)")
     parser.add_argument("-s", "--step", type=float, default=2.5, help="Step size in kb (default=2.5)")
-    parser.add_argument("-t", "--threads", type=int, default=1, help="Max number of parallel contig workers/threads (default=1)")
+    parser.add_argument("-t", "--threads", type=int, default=1,
+                        help="Max number of parallel contig workers/threads (default=1)")
     return parser.parse_args()
+
 
 def validate_inputs(bai_file, args):
     if not os.path.exists(args.bam):
@@ -47,17 +59,21 @@ def validate_inputs(bai_file, args):
         print(f"[WARN] Step size ({args.step} kb) is larger than window size ({args.window} kb) — "
               f"regions between windows will not be covered and results will not be genome-wide complete")
 
+
 # --------------------------- Output Setup ---------------------------
 def _format_or_empty(value, spec=""):
     return "" if math.isnan(float(value)) else format(value, spec)
+
 
 def _format_kb_value(value):
     if float(value).is_integer():
         return str(int(value))
     return str(value).replace('.', ',')
 
+
 def _sanitise_filename(name):
     return re.sub(r'[^\w.\-]', '_', name)
+
 
 def prepare_output_dirs(bam_file, window, step):
     prefix = os.path.splitext(os.path.basename(bam_file))[0]
@@ -73,6 +89,7 @@ def prepare_output_dirs(bam_file, window, step):
 
     return folder, contigs_folder, window_file, summary_file
 
+
 # --------------------- Statistical Computation ----------------------
 def compute_median_from_hist(hist):
     total = sum(hist)
@@ -86,16 +103,19 @@ def compute_median_from_hist(hist):
             return value
     return math.nan
 
+
 def compute_mean_from_hist(hist):
     total = sum(hist)
     if total == 0:
         return math.nan
     return sum(i * hist[i] for i in range(len(hist))) / total
 
+
 def get_softclip_bases(read):
     if read.cigartuples is None:
         return 0
     return sum(length for op, length in read.cigartuples if op == 4)
+
 
 # ------------------------ Window Management -------------------------
 def _make_window(start, window_bp):
@@ -107,6 +127,7 @@ def _make_window(start, window_bp):
         "total_bases": 0,
         "softclip_bases": 0
     }
+
 
 def _create_windows(next_window_start, limit_start, chrom_len, window_bp, step_bp):
     windows = []
@@ -138,6 +159,7 @@ def _create_windows(next_window_start, limit_start, chrom_len, window_bp, step_b
 
     return windows, next_window_start, chrom_end_reached
 
+
 def _flush_window_to_csv(w, chrom, window_writer):
     if sum(w["hist"]) == 0:
         mean_mapq = math.nan
@@ -157,9 +179,19 @@ def _flush_window_to_csv(w, chrom, window_writer):
             flags.append("LOW_DEPTH")
         flag = "|".join(flags)
 
-    window_writer.writerow([chrom, w["start"], w["end"], _format_or_empty(mean_mapq, ".2f"),
-                            _format_or_empty(median_mapq), w["read_count"], w["total_bases"],
-                            w["softclip_bases"], _format_or_empty(softclip_pct, ".5f"), flag])
+    window_writer.writerow([
+        chrom,
+        w["start"],
+        w["end"],
+        _format_or_empty(mean_mapq, ".2f"),
+        _format_or_empty(median_mapq),
+        w["read_count"],
+        w["total_bases"],
+        w["softclip_bases"],
+        _format_or_empty(softclip_pct, ".5f"),
+        flag
+    ])
+
 
 # --------------------- Read & Contig Processing ---------------------
 def _accumulate_read_into_windows(read, windows, mapq, chrom_hist):
@@ -249,7 +281,7 @@ def _accumulate_read_into_windows(read, windows, mapq, chrom_hist):
         left_sc = ct[1][1]
     else:
         left_sc = 0
- 
+
     # right soft clip — check ct[-1], if H check ct[-2]
     if ct[-1][0] == 4:
         right_sc = ct[-1][1]
@@ -257,14 +289,14 @@ def _accumulate_read_into_windows(read, windows, mapq, chrom_hist):
         right_sc = ct[-2][1]
     else:
         right_sc = 0
- 
+
     if left_sc > 0:
         anchor = read.reference_start
         for w in windows:
             if w["start"] <= anchor < w["end"]:
                 w["softclip_bases"] += left_sc
                 w["total_bases"] += left_sc
- 
+
     if right_sc > 0 and read.reference_end is not None \
             and read.reference_end > read.reference_start:
         anchor = read.reference_end - 1
@@ -272,6 +304,7 @@ def _accumulate_read_into_windows(read, windows, mapq, chrom_hist):
             if w["start"] <= anchor < w["end"]:
                 w["softclip_bases"] += right_sc
                 w["total_bases"] += right_sc
+
 
 def _compute_contig_window_stats(bam, chrom, chrom_len, window_bp, step_bp, window_writer):
     active = deque()
@@ -329,7 +362,14 @@ def _compute_contig_window_stats(bam, chrom, chrom_len, window_bp, step_bp, wind
         finished = active.popleft()
         _flush_window_to_csv(finished, chrom, window_writer)
 
-    return reads_seen, chrom_total_bases, chrom_softclip_bases, chrom_hist, total_windows_created
+    return (
+        reads_seen,
+        chrom_total_bases,
+        chrom_softclip_bases,
+        chrom_hist,
+        total_windows_created
+    )
+
 
 def _run_contig_worker(bam_file, bam_index, chrom, chrom_len, window_bp, step_bp, contigs_folder):
     safe_chrom = _sanitise_filename(chrom)
@@ -342,30 +382,69 @@ def _run_contig_worker(bam_file, bam_index, chrom, chrom_len, window_bp, step_bp
          open(sum_path, "w", newline="") as sum_f:
 
         window_writer = csv.writer(win_f)
-        window_writer.writerow(["Chromosome", "Start", "End", "Mean_MAPQ", "Median_MAPQ",
-                                "Read_Count", "Total_Bases", "Softclip_Bases", "Softclip_%", "Flag"])
+        window_writer.writerow([
+            "Chromosome",
+            "Start",
+            "End",
+            "Mean_MAPQ",
+            "Median_MAPQ",
+            "Read_Count",
+            "Total_Bases",
+            "Softclip_Bases",
+            "Softclip_%",
+            "Flag"
+        ])
 
         summary_writer = csv.writer(sum_f)
-        summary_writer.writerow(["Chromosome", "Mean_MAPQ", "Median_MAPQ", "Reads_Seen",
-                                 "Total_Bases", "Softclip_Bases", "Softclip_%", "Windows_Created"])
-        
-        reads_seen, chrom_total_bases, chrom_softclip_bases, chrom_hist, windows_created = _compute_contig_window_stats(
-            bam, chrom, chrom_len, window_bp, step_bp, window_writer 
-        )
+        summary_writer.writerow([
+            "Chromosome",
+            "Mean_MAPQ",
+            "Median_MAPQ",
+            "Reads_Seen",
+            "Total_Bases",
+            "Softclip_Bases",
+            "Softclip_%",
+            "Windows_Created"
+        ])
+
+        (
+            reads_seen,
+            chrom_total_bases,
+            chrom_softclip_bases,
+            chrom_hist,
+            windows_created
+        ) = _compute_contig_window_stats(bam, chrom, chrom_len, window_bp, step_bp, window_writer)
 
         chrom_median = compute_median_from_hist(chrom_hist)
         chrom_mean = compute_mean_from_hist(chrom_hist)
         softclip_pct = (chrom_softclip_bases / chrom_total_bases * 100) if chrom_total_bases > 0 else math.nan
-        summary_writer.writerow([chrom, _format_or_empty(chrom_mean, ".2f"),
-                                 _format_or_empty(chrom_median), reads_seen, chrom_total_bases,
-                                 chrom_softclip_bases, _format_or_empty(softclip_pct, ".5f"), windows_created])
+        summary_writer.writerow([
+            chrom,
+            _format_or_empty(chrom_mean, ".2f"),
+            _format_or_empty(chrom_median),
+            reads_seen,
+            chrom_total_bases,
+            chrom_softclip_bases,
+            _format_or_empty(softclip_pct, ".5f"),
+            windows_created
+        ])
 
-    return (chrom, reads_seen, chrom_mean, chrom_median, chrom_total_bases, chrom_softclip_bases, windows_created, chrom_hist)
+    return (
+        chrom,
+        reads_seen,
+        chrom_mean,
+        chrom_median,
+        chrom_total_bases,
+        chrom_softclip_bases,
+        windows_created,
+        chrom_hist
+    )
+
 
 # -------------------------- Orchestration ---------------------------
 def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, window_file, summary_file, contigs_folder):
     window_bp = int(round(window_kb * 1000))
-    step_bp   = int(round(step_kb * 1000))
+    step_bp = int(round(step_kb * 1000))
 
     total_genome_reads = 0
     total_genome_bases = 0
@@ -395,24 +474,46 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
     with ProcessPoolExecutor(max_workers=max_workers) as ex:
         try:
             for chrom, chrom_len in references:
-                fut = ex.submit(_run_contig_worker, bam_file, bam_index, chrom, chrom_len,
-                                window_bp, step_bp, contigs_folder)
+                fut = ex.submit(
+                    _run_contig_worker,
+                    bam_file,
+                    bam_index,
+                    chrom,
+                    chrom_len,
+                    window_bp,
+                    step_bp,
+                    contigs_folder
+                )
                 futures[fut] = chrom
 
             per_contig_stats = {}
             for fut in as_completed(futures):
                 chrom = futures[fut]
                 try:
-                    (chrom, reads_seen, chrom_mean, chrom_median, chrom_total_bases, chrom_softclip_bases,
-                     windows_created, chrom_hist) = fut.result()
+                    (
+                        chrom,
+                        reads_seen,
+                        chrom_mean,
+                        chrom_median,
+                        chrom_total_bases,
+                        chrom_softclip_bases,
+                        windows_created,
+                        chrom_hist
+                    ) = fut.result()
                 except Exception as e:
                     print(f"\n[ERROR] Worker failed on contig '{chrom}': {type(e).__name__}: {e}")
                     print("[ERROR] Aborting — cancelling all remaining workers ...")
                     ex.shutdown(wait=False, cancel_futures=True)
                     sys.exit(1)
 
-                per_contig_stats[chrom] = (reads_seen, chrom_mean, chrom_median, chrom_total_bases,
-                                           chrom_softclip_bases, windows_created)
+                per_contig_stats[chrom] = (
+                    reads_seen,
+                    chrom_mean,
+                    chrom_median,
+                    chrom_total_bases,
+                    chrom_softclip_bases,
+                    windows_created
+                )
 
                 total_genome_reads += reads_seen
                 total_genome_bases += chrom_total_bases
@@ -423,7 +524,8 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
                     global_hist[i] += chrom_hist[i]
 
                 timestamp = datetime.datetime.now()
-                print(f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] Finished {chrom} — Reads: {reads_seen:,}, Windows: {windows_created:,}")
+                print(f"[{timestamp.strftime('%Y-%m-%d %H:%M:%S')}] Finished {chrom} — \
+                      Reads: {reads_seen:,}, Windows: {windows_created:,}")
 
         except KeyboardInterrupt:
             print("\n[INFO] Interrupted — cancelling pending workers and exiting ...")
@@ -432,9 +534,19 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
 
     with open(window_file, "w", newline="") as win_out:
         window_writer = csv.writer(win_out)
-        window_writer.writerow(["Chromosome", "Start", "End", "Mean_MAPQ", "Median_MAPQ",
-                                "Read_Count", "Total_Bases", "Softclip_Bases", "Softclip_%", "Flag"])
-        
+        window_writer.writerow([
+            "Chromosome",
+            "Start",
+            "End",
+            "Mean_MAPQ",
+            "Median_MAPQ",
+            "Read_Count",
+            "Total_Bases",
+            "Softclip_Bases",
+            "Softclip_%",
+            "Flag"
+        ])
+
         for chrom, _ in references:
             per_path = os.path.join(contigs_folder, f"{_sanitise_filename(chrom)}.windows.csv")
             if not os.path.exists(per_path):
@@ -451,21 +563,52 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
 
     with open(summary_file, "w", newline="") as sum_out:
         summary_writer = csv.writer(sum_out)
-        summary_writer.writerow(["Chromosome", "Mean_MAPQ", "Median_MAPQ", "Reads_Seen",
-                                 "Total_Bases", "Softclip_Bases", "Softclip_%", "Windows_Created"])
+        summary_writer.writerow([
+            "Chromosome",
+            "Mean_MAPQ",
+            "Median_MAPQ",
+            "Reads_Seen",
+            "Total_Bases",
+            "Softclip_Bases",
+            "Softclip_%",
+            "Windows_Created"
+        ])
+
         for chrom, _ in references:
             if chrom not in per_contig_stats:
                 continue
-            reads_seen, chrom_mean, chrom_median, chrom_total_bases, chrom_softclip_bases, windows_created = per_contig_stats[chrom]
-            softclip_pct = (chrom_softclip_bases / chrom_total_bases * 100) if chrom_total_bases > 0 else math.nan
-            summary_writer.writerow([chrom, _format_or_empty(chrom_mean, ".2f"),
-                                     _format_or_empty(chrom_median), reads_seen, chrom_total_bases,
-                                     chrom_softclip_bases, _format_or_empty(softclip_pct, ".5f"), windows_created])
+            (
+                reads_seen,
+                chrom_mean,
+                chrom_median,
+                chrom_total_bases,
+                chrom_softclip_bases,
+                windows_created
+            ) = per_contig_stats[chrom]
 
-        summary_writer.writerow(["GENOME", _format_or_empty(genome_mean_mapq, ".2f"),
-                                 _format_or_empty(genome_median_mapq), total_genome_reads,
-                                 total_genome_bases, total_genome_softclip, _format_or_empty(genome_softclip_pct, ".5f"),
-                                 total_windows_created_overall])
+            softclip_pct = (chrom_softclip_bases / chrom_total_bases * 100) if chrom_total_bases > 0 else math.nan
+
+            summary_writer.writerow([
+                chrom,
+                _format_or_empty(chrom_mean, ".2f"),
+                _format_or_empty(chrom_median),
+                reads_seen,
+                chrom_total_bases,
+                chrom_softclip_bases,
+                _format_or_empty(softclip_pct, ".5f"),
+                windows_created
+            ])
+
+        summary_writer.writerow([
+            "GENOME",
+            _format_or_empty(genome_mean_mapq, ".2f"),
+            _format_or_empty(genome_median_mapq),
+            total_genome_reads,
+            total_genome_bases,
+            total_genome_softclip,
+            _format_or_empty(genome_softclip_pct, ".5f"),
+            total_windows_created_overall
+        ])
 
     print("\nSummary completed.")
     print(f"Total reads seen: {total_genome_reads:,}")
@@ -474,6 +617,7 @@ def run_analysis(bam_file, bam_index, window_kb, step_kb, requested_threads, win
     print(f"Genome-wide mean MAPQ: {f'{genome_mean_mapq:.2f}' if not math.isnan(genome_mean_mapq) else 'N/A'}, "
           f"median MAPQ: {genome_median_mapq if not math.isnan(float(genome_median_mapq)) else 'N/A'}")
     print(f"Total windows created across genome: {total_windows_created_overall:,}")
+
 
 def main():
     args = parse_arguments()
@@ -492,6 +636,7 @@ def main():
     end_time = datetime.datetime.now()
     elapsed = end_time - start_time
     print(f"[{end_time.strftime('%Y-%m-%d %H:%M:%S')}] Finished in {str(elapsed).split('.')[0]}")
+
 
 if __name__ == "__main__":
     main()

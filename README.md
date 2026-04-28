@@ -33,9 +33,9 @@ pip install -e .
  
 | Module | Description | Status |
 |---|---|---|
-| `mapq_softclip.py` | Sliding-window MAPQ and soft-clip assessment | Available |
-| `visualise.py` | Figures and plots from analytical module outputs | Available (for mapq_softclip) |
-| `hese.py` | Phasing quality assessment for hifiasm trio assemblies | Coming soon |
+| `mapq_softclip` | Sliding-window MAPQ and soft-clip assessment | Available |
+| `visualise` | Figures and plots from analytical module outputs | Available (for mapq_softclip) |
+| `hese` | Phasing quality assessment for hifiasm trio assemblies | Coming soon |
  
 ---
 

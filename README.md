@@ -17,15 +17,24 @@ RAAQA is a command-line tool for the quantitative assessment of genome assembly 
 ---
 
 ## Installation
- 
+
+> **Note:** bioconda packaging is in progress. Until available, use the install below.
+
 ```bash
 git clone https://github.com/kuzsam/raaqa.git
 cd raaqa
 conda env create -f environment.yml
 conda activate raaqa
-pip install -e .
+pip install .
 ```
- 
+
+<details>
+<summary>Dev install</summary>
+
+Use `pip install -e .` instead to install in editable mode. Source changes take effect immediately without reinstalling.
+
+</details>
+
 ---
 
 
@@ -188,8 +197,10 @@ figures/
 
 ---
 
-## `hese` *(coming soon)*
- 
+## `hese`
+
+> **Note:** Coming soon
+
 Assesses haplotype separation quality for hifiasm trio assemblies using
 Hamming and switch errors derived from parental read mappings. Applicable
 specifically to hifiasm trio assemblies where parental sequencing data is
@@ -199,13 +210,13 @@ available.
  
 ## Roadmap
 
-- **Phasing quality module** — Hamming and switch error assessment for hifiasm
+- **Phasing quality module** - Hamming and switch error assessment for hifiasm
   trio assemblies using parental read mappings
-- **Visualise hese support** — extend visualise module to support hese output
+- **Visualise hese support** - extend visualise module to support hese output
+- **Bioconda package** - easy install through bioconda channel
  
 ---
  
 ## License
  
-MIT License — see [LICENSE](LICENSE) for details.
- 
+MIT License - see [LICENSE](LICENSE) for details.

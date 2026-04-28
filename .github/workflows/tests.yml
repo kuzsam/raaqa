@@ -1,0 +1,29 @@
+name: Tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up conda environment
+        uses: conda-incubator/setup-miniconda@v4
+        with:
+          environment-file: environment.yml
+          activate-environment: raaqa
+
+      - name: Install package
+        shell: bash -el {0}
+        run: pip install -e . -q
+
+      - name: Run tests
+        shell: bash -el {0}
+        run: pytest -v

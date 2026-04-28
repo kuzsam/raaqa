@@ -13,7 +13,6 @@ import numpy as np
 
 try:
     from importlib.metadata import version
-
     VERSION = version("raaqa")
 except Exception:
     VERSION = "unknown"

@@ -17,9 +17,9 @@ jobs:
       - name: Set up conda environment
         uses: conda-incubator/setup-miniconda@v4
         with:
+          conda-remove-defaults: true
           environment-file: environment.yml
           activate-environment: raaqa
-          conda-remove-defaults: true
 
       - name: Install package
         shell: bash -el {0}

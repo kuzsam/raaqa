@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [0.2.0] - unreleased
+## [0.2.0] - 2026-05-01
 
 ### Added
 - `visualise` module — generates genome-wide summary and per-contig figures from `mapq_softclip` output
@@ -32,7 +32,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [0.1.1] - unreleased
+## [0.1.1] - 2026-05-01
 
 ### Changed
 - Output directory prefix is now derived from the BAM filename instead of a `mapq_softclip` prefix

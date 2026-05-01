@@ -12,6 +12,7 @@ RAAQA is a command-line tool for the quantitative assessment of genome assembly 
   - [visualise](#visualise)
   - [hese](#hese)
 - [Roadmap](#roadmap)
+- [Citation](#citation)
 - [License](#license)
  
 ---
@@ -217,6 +218,14 @@ available.
  
 ---
  
+## Citation
+
+If you use RAAQA in your work, please cite it using the DOI:
+
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.19952414.svg)](https://doi.org/10.5281/zenodo.19952414)
+
+---
+
 ## License
  
 MIT License - see [LICENSE](LICENSE) for details.

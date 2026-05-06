@@ -32,7 +32,7 @@ pip install .
 <details>
 <summary>Dev install</summary>
 
-Use `pip install -e .` instead to install in editable mode. Source changes take effect immediately without reinstalling.
+Use `pip install -e .` instead of `pip install .` to install in editable mode. Source changes take effect immediately without reinstalling.
 
 </details>
 
@@ -59,16 +59,16 @@ quality profiles at the window, contig, and genome-wide level.
 ### Options
  
 ```
-usage: mapq_softclip [-h] [-v] -b BAM [-i BAI] [-w WINDOW] [-s STEP] [-t THREADS]
+usage: mapq_softclip [-h] [-v] -b FILE [-i FILE] [-w FLOAT] [-s FLOAT] [-t N]
  
 options:
   -h, --help            show this help message and exit
   -v, --version         show program version and exit
-  -b, --bam BAM         BAM file (required)
-  -i, --bai BAI         BAM index file (.bai) — defaults to BAM path + .bai
-  -w, --window WINDOW   window size in kb (default: 5)
-  -s, --step STEP       step size in kb (default: 2.5)
-  -t, --threads THREADS number of parallel contig workers (default: 1)
+  -b, --bam FILE        BAM file (required)
+  -i, --bai FILE        BAM index file (.bai) — defaults to BAM path + .bai
+  -w, --window FLOAT    window size in kb (default: 5)
+  -s, --step FLOAT      step size in kb (default: 2.5)
+  -t, --threads N       number of parallel contig workers (default: 1)
 ```
  
 ### Example
@@ -99,13 +99,13 @@ All output is written to a timestamped folder in the current working directory:
 | Chromosome | Contig name from BAM header |
 | Start | Window start position (0-based) |
 | End | Window end position |
-| Mean_MAPQ | Base-weighted mean MAPQ across the window |
-| Median_MAPQ | Base-weighted median MAPQ across the window |
-| Read_Count | Number of primary reads overlapping the window |
-| Total_Bases | Total aligned bases in the window |
-| Softclip_Bases | Total soft-clipped bases anchored to the window |
+| Mean_MAPQ | Base-weighted mean MAPQ |
+| Median_MAPQ | Base-weighted median MAPQ |
+| Read_Count | Number of primary reads |
+| Total_Bases | Total aligned bases |
+| Softclip_Bases | Total soft-clipped bases |
 | Softclip_% | Soft-clipped bases as a percentage of total bases |
-| Flag | Quality flag(s) for the window — empty if no issues detected |
+| Flag | Coverage quality flag(s) |
 
 Flags are pipe-separated when multiple conditions apply (e.g. `LOW_COVERAGE|LOW_DEPTH`):
 
@@ -122,14 +122,16 @@ Flags are pipe-separated when multiple conditions apply (e.g. `LOW_COVERAGE|LOW_
 
 | Column | Description |
 |---|---|
-| Chromosome | Contig name, or `GENOME` for the genome-wide row |
-| Mean_MAPQ | Base-weighted mean MAPQ across the contig or genome |
-| Median_MAPQ | Base-weighted median MAPQ across the contig or genome |
+| Chromosome | Contig name or `GENOME`\* |
+| Mean_MAPQ | Base-weighted mean MAPQ |
+| Median_MAPQ | Base-weighted median MAPQ |
 | Reads_Seen | Total primary reads processed |
 | Total_Bases | Total aligned bases |
 | Softclip_Bases | Total soft-clipped bases |
 | Softclip_% | Soft-clipped bases as a percentage of total bases |
-| Windows_Created | Number of windows created for this contig or genome |
+| Windows_Created | Number of windows created |
+
+\* The final row reports genome-wide totals under the label `GENOME`.
 
 </details>
 
@@ -142,14 +144,14 @@ Generates figures and plots from the outputs of the analytical modules. Currentl
 ### Options
 
 ```
-usage: visualise [-h] [-v] -m MODULE -i INPUT [-r ROLLING]
+usage: visualise [-h] [-v] -m {mapq_softclip,hese} -i DIR [-r FLOAT]
 
 options:
   -h, --help               show this help message and exit
   -v, --version            show program version and exit
-  -m, --module MODULE      which module's output to visualise: mapq_softclip
-  -i, --input INPUT        path to the output folder from the module run
-  -r, --rolling ROLLING    rolling mean window in kb for rolling figures (default: 1000)
+  -m, --module             which module's output to visualise: mapq_softclip
+  -i, --input DIR          path to the output folder from the module run
+  -r, --rolling FLOAT      rolling mean window in kb for rolling figures (default: 1000)
 ```
 
 ### Example

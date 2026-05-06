@@ -111,13 +111,15 @@ def parse_arguments():
         "-i",
         "--input",
         required=True,
+        metavar="DIR",
         help="Path to the output folder from the respective module run",
     )
     parser.add_argument(
         "-r",
         "--rolling",
-        type=int,
+        type=float,
         default=1000,
+        metavar="FLOAT",
         help="Genomic distance in kb to span for rolling mean in rolling figures (default: 1000)",
     )
     return parser.parse_args()
@@ -603,6 +605,7 @@ def fig_per_contig_rolling(df_win, df_sum, figures_folder, rolling_target_bp):
 
     chroms = list(dict.fromkeys(df["Chromosome"].tolist()))
     total = len(chroms)
+    rolling_capped = False
 
     for i, chrom in enumerate(chroms, 1):
         cdf = df[df["Chromosome"] == chrom].copy()
@@ -620,7 +623,10 @@ def fig_per_contig_rolling(df_win, df_sum, figures_folder, rolling_target_bp):
             step_bp = int(cdf["Start"].iloc[1] - cdf["Start"].iloc[0])
             step_div, step_unit = smart_bp_formatter(step_bp)
             step_str = f"{step_bp / step_div:g} {step_unit}"
-            rolling_n = min(max(3, round(rolling_target_bp / step_bp)), len(cdf))
+            uncapped_n = max(3, round(rolling_target_bp / step_bp))
+            rolling_n = min(uncapped_n, len(cdf))
+            if uncapped_n > len(cdf):
+                rolling_capped = True
             rolling_span_bp = rolling_n * step_bp
         else:
             step_str = "N/A (single window)"
@@ -815,6 +821,12 @@ def fig_per_contig_rolling(df_win, df_sum, figures_folder, rolling_target_bp):
         if i % 50 == 0 or i == total:
             print(f"[INFO] Rolling per-contig figures: {i}/{total}")
 
+    if rolling_capped:
+        rolling_div, rolling_unit = smart_bp_formatter(int(rolling_target_bp))
+        print(
+            f"[WARN] -r/--rolling ({rolling_target_bp / rolling_div:g} {rolling_unit}) "
+            f"exceeds the window count of one or more contigs. Rolling window was capped at contig length for those contigs."
+        )
     print(f"[INFO] Rolling per-contig figures saved to: {rolling_folder}")
 
 
@@ -853,7 +865,7 @@ def main():
     check_input(args.input, args.module)
 
     if args.rolling < 1:
-        sys.exit("[ERROR] -r/--rolling must be a positive integer (kb)")
+        sys.exit("[ERROR] -r/--rolling must be at least 1 kb")
 
     if args.module == "mapq_softclip":
         run_mapq_softclip(args.input, args.rolling * 1000)

@@ -311,7 +311,7 @@ class TestFigureFileCreation:
 
 
 class TestFigureEdgeCases:
-    """Edge inputs that must not crash: single-window contig, special chars in contig name."""
+    """Edge inputs that must not crash, and rolling window capping and warning behaviour."""
 
     def test_single_window_contig_does_not_crash(self, tmp_path_factory):
         # A contig with only one window cannot compute a step size from two rows.
@@ -335,6 +335,70 @@ class TestFigureEdgeCases:
         assert os.path.exists(
             os.path.join(out, "figures", "contigs", "raw", "chr1_per_window_raw.png")
         )
+
+    def test_float_rolling_value_does_not_crash(self, tmp_path_factory):
+        # rolling_target_bp can be a float (e.g. 1.5 kb → 1500.5 bp)
+        out = str(tmp_path_factory.mktemp("vis_float_rolling"))
+        _make_minimal_csvs(out)
+        run_mapq_softclip(out, rolling_target_bp=1500.5)
+        assert os.path.exists(
+            os.path.join(out, "figures", "contigs", "rolling", "chr1_per_window_rolling.png")
+        )
+
+    def test_oversized_rolling_capped_and_warns(self, tmp_path_factory, capsys):
+        # rolling_target_bp larger than the contig must be silently capped and warn once
+        out = str(tmp_path_factory.mktemp("vis_large_rolling"))
+        _make_minimal_csvs(out)
+        run_mapq_softclip(out, rolling_target_bp=999_999_999)
+        assert os.path.exists(
+            os.path.join(out, "figures", "contigs", "rolling", "chr1_per_window_rolling.png")
+        )
+        assert "[WARN]" in capsys.readouterr().out
+
+    def test_no_warning_when_rolling_fits_all_contigs(self, tmp_path_factory, capsys):
+        # rolling smaller than every contig — no [WARN] should appear
+        out = str(tmp_path_factory.mktemp("vis_small_rolling"))
+        _make_minimal_csvs(out)
+        run_mapq_softclip(out, rolling_target_bp=500)   # step=1000bp, 3 windows → fits
+        assert "[WARN]" not in capsys.readouterr().out
+
+    def test_warning_message_contains_rolling_value(self, tmp_path_factory, capsys):
+        # the [WARN] message must include the rolling value so the user knows what triggered it
+        out = str(tmp_path_factory.mktemp("vis_warn_content"))
+        _make_minimal_csvs(out)
+        run_mapq_softclip(out, rolling_target_bp=999_999_999)
+        out_text = capsys.readouterr().out
+        assert "[WARN]" in out_text
+        assert "--rolling" in out_text   # argument name appears so user knows what to adjust
+        assert "capped" in out_text      # capping behaviour is mentioned explicitly
+
+    def test_partial_capping_warns_when_only_some_contigs_exceeded(self, tmp_path_factory, capsys):
+        # chr1 has 5 windows (step 1000bp), chr2 has 2 windows (step 1000bp)
+        # rolling=3500bp → uncapped_n=4, fits chr1 (5 windows) but caps chr2 (2 windows)
+        out = str(tmp_path_factory.mktemp("vis_partial_cap"))
+        _make_minimal_csvs(
+            out,
+            window_content=(
+                "Chromosome,Start,End,Mean_MAPQ,Median_MAPQ,Read_Count,"
+                "Total_Bases,Softclip_Bases,Softclip_%,Flag\n"
+                "chr1,0,1000,60.00,60,10,10000,0,0.00000,\n"
+                "chr1,1000,2000,60.00,60,10,10000,0,0.00000,\n"
+                "chr1,2000,3000,60.00,60,10,10000,0,0.00000,\n"
+                "chr1,3000,4000,60.00,60,10,10000,0,0.00000,\n"
+                "chr1,4000,5000,60.00,60,10,10000,0,0.00000,\n"
+                "chr2,0,1000,60.00,60,10,10000,0,0.00000,\n"
+                "chr2,1000,2000,60.00,60,10,10000,0,0.00000,\n"
+            ),
+            summary_content=(
+                "Chromosome,Mean_MAPQ,Median_MAPQ,Reads_Seen,"
+                "Total_Bases,Softclip_Bases,Softclip_%,Windows_Created\n"
+                "chr1,60.00,60,50,50000,0,0.00000,5\n"
+                "chr2,60.00,60,20,20000,0,0.00000,2\n"
+                "GENOME,60.00,60,70,70000,0,0.00000,7\n"
+            ),
+        )
+        run_mapq_softclip(out, rolling_target_bp=3500)
+        assert "[WARN]" in capsys.readouterr().out
 
     def test_contig_name_with_special_chars_sanitised(self, tmp_path_factory):
         # Contig names like "chr1:1-5000" must be sanitised before use as filenames.

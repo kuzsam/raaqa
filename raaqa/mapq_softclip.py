@@ -28,11 +28,11 @@ def parse_arguments():
         description="Compute MAPQ and softclip statistics in sliding windows from a BAM file."
     )
     parser.add_argument("-v", "--version", action="version", version=f"RAAQA: {VERSION}")
-    parser.add_argument("-b", "--bam", required=True, help="BAM file")
-    parser.add_argument("-i", "--bai", default=None, help="BAM index file (.bai)")
-    parser.add_argument("-w", "--window", type=float, default=5, help="Window size in kb (default=5)")
-    parser.add_argument("-s", "--step", type=float, default=2.5, help="Step size in kb (default=2.5)")
-    parser.add_argument("-t", "--threads", type=int, default=1,
+    parser.add_argument("-b", "--bam", required=True, metavar="FILE", help="BAM file")
+    parser.add_argument("-i", "--bai", default=None, metavar="FILE", help="BAM index file (.bai)")
+    parser.add_argument("-w", "--window", type=float, default=5, metavar="FLOAT", help="Window size in kb (default=5)")
+    parser.add_argument("-s", "--step", type=float, default=2.5, metavar="FLOAT", help="Step size in kb (default=2.5)")
+    parser.add_argument("-t", "--threads", type=int, default=1, metavar="N",
                         help="Max number of parallel contig workers/threads (default=1)")
     return parser.parse_args()
 

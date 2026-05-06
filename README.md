@@ -142,21 +142,20 @@ Generates figures and plots from the outputs of the analytical modules. Currentl
 ### Options
 
 ```
-usage: visualise [-h] [-v] -m MODULE -i INPUT [-f FIGURES] [-r ROLLING]
+usage: visualise [-h] [-v] -m MODULE -i INPUT [-r ROLLING]
 
 options:
   -h, --help               show this help message and exit
   -v, --version            show program version and exit
   -m, --module MODULE      which module's output to visualise: mapq_softclip
   -i, --input INPUT        path to the output folder from the module run
-  -f, --figures FIGURES    figures to generate: genome | contigs | all (default: all)
   -r, --rolling ROLLING    rolling mean window in kb for rolling figures (default: 1000)
 ```
 
 ### Example
 
 ```bash
-visualise -m mapq_softclip -i mapq_softc_output_folder/ -f all -r 500
+visualise -m mapq_softclip -i mapq_softc_output_folder/ -r 500
 ```
 
 ### Output

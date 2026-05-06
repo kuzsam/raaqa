@@ -285,24 +285,18 @@ def csv_folder(tmp_path_factory):
 
 
 class TestFigureFileCreation:
-    """run_mapq_softclip creates the expected figure files for each mode (genome/contigs/all)."""
+    """run_mapq_softclip always creates all expected figure files."""
 
-    def test_genome_figure_created(self, csv_folder, tmp_path_factory):
+    def test_genome_figure_created(self, tmp_path_factory):
         out = str(tmp_path_factory.mktemp("vis_genome"))
         _make_minimal_csvs(out)
-        run_mapq_softclip(out, "genome", rolling_target_bp=1000)
+        run_mapq_softclip(out, rolling_target_bp=1000)
         assert os.path.exists(os.path.join(out, "figures", "genome_summary.png"))
-
-    def test_genome_only_does_not_create_contig_figures(self, tmp_path_factory):
-        out = str(tmp_path_factory.mktemp("vis_genome_only"))
-        _make_minimal_csvs(out)
-        run_mapq_softclip(out, "genome", rolling_target_bp=1000)
-        assert not os.path.exists(os.path.join(out, "figures", "contigs"))
 
     def test_contigs_raw_figure_created(self, tmp_path_factory):
         out = str(tmp_path_factory.mktemp("vis_contigs"))
         _make_minimal_csvs(out)
-        run_mapq_softclip(out, "contigs", rolling_target_bp=1000)
+        run_mapq_softclip(out, rolling_target_bp=1000)
         assert os.path.exists(
             os.path.join(out, "figures", "contigs", "raw", "chr1_per_window_raw.png")
         )
@@ -310,25 +304,7 @@ class TestFigureFileCreation:
     def test_contigs_rolling_figure_created(self, tmp_path_factory):
         out = str(tmp_path_factory.mktemp("vis_rolling"))
         _make_minimal_csvs(out)
-        run_mapq_softclip(out, "contigs", rolling_target_bp=1000)
-        assert os.path.exists(
-            os.path.join(out, "figures", "contigs", "rolling", "chr1_per_window_rolling.png")
-        )
-
-    def test_contigs_only_does_not_create_genome_figure(self, tmp_path_factory):
-        out = str(tmp_path_factory.mktemp("vis_contigs_only"))
-        _make_minimal_csvs(out)
-        run_mapq_softclip(out, "contigs", rolling_target_bp=1000)
-        assert not os.path.exists(os.path.join(out, "figures", "genome_summary.png"))
-
-    def test_all_creates_both_genome_and_contig_figures(self, tmp_path_factory):
-        out = str(tmp_path_factory.mktemp("vis_all"))
-        _make_minimal_csvs(out)
-        run_mapq_softclip(out, "all", rolling_target_bp=1000)
-        assert os.path.exists(os.path.join(out, "figures", "genome_summary.png"))
-        assert os.path.exists(
-            os.path.join(out, "figures", "contigs", "raw", "chr1_per_window_raw.png")
-        )
+        run_mapq_softclip(out, rolling_target_bp=1000)
         assert os.path.exists(
             os.path.join(out, "figures", "contigs", "rolling", "chr1_per_window_rolling.png")
         )
@@ -355,7 +331,7 @@ class TestFigureEdgeCases:
                 "GENOME,60.00,60,5,4000,0,0.00000,1\n"
             ),
         )
-        run_mapq_softclip(out, "all", rolling_target_bp=1000)
+        run_mapq_softclip(out, rolling_target_bp=1000)
         assert os.path.exists(
             os.path.join(out, "figures", "contigs", "raw", "chr1_per_window_raw.png")
         )
@@ -379,7 +355,7 @@ class TestFigureEdgeCases:
                 "GENOME,60.00,60,20,20000,0,0.00000,2\n"
             ),
         )
-        run_mapq_softclip(out, "contigs", rolling_target_bp=1000)
+        run_mapq_softclip(out, rolling_target_bp=1000)
         # colon must be replaced by underscore in the output filename
         assert os.path.exists(
             os.path.join(out, "figures", "contigs", "raw", "chr1_seg1_per_window_raw.png")
@@ -439,7 +415,7 @@ def pipeline_output(tmp_path_factory):
     run_analysis(bam_path, bam_path + ".bai", 1.0, 1.0, 1,
                  window_file, summary_file, contigs_folder)
 
-    run_mapq_softclip(str(base), "all", rolling_target_bp=1000)
+    run_mapq_softclip(str(base), rolling_target_bp=1000)
     return str(base)
 
 

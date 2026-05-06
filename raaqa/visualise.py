@@ -46,7 +46,7 @@ REQUIRED_WIN_COLS = {
     "Total_Bases",
     "Median_MAPQ",
     "Mean_MAPQ",
-    "Softclip_%",
+    "Softclip_%"
 }
 REQUIRED_SUM_COLS = {"Chromosome", "Mean_MAPQ", "Median_MAPQ", "Softclip_%"}
 
@@ -112,13 +112,6 @@ def parse_arguments():
         "--input",
         required=True,
         help="Path to the output folder from the respective module run",
-    )
-    parser.add_argument(
-        "-f",
-        "--figures",
-        choices=["genome", "contigs", "all"],
-        default="all",
-        help="Which figures to generate: genome-wide summary only, per-contig only, or all (default: all)",
     )
     parser.add_argument(
         "-r",
@@ -826,7 +819,7 @@ def fig_per_contig_rolling(df_win, df_sum, figures_folder, rolling_target_bp):
 
 
 # mapq_softclip
-def run_mapq_softclip(input_folder, figures, rolling_target_bp):
+def run_mapq_softclip(input_folder, rolling_target_bp):
     window_file = os.path.join(input_folder, "window_stats.csv")
     summary_file = os.path.join(input_folder, "summary_stats.csv")
     figures_folder = make_figures_folder(input_folder)
@@ -839,15 +832,13 @@ def run_mapq_softclip(input_folder, figures, rolling_target_bp):
     df_sum = pd.read_csv(summary_file)
     _check_columns(df_sum, REQUIRED_SUM_COLS, "summary_stats.csv")
 
-    if figures in ("genome", "all"):
-        print("[INFO] Generating genome-wide summary figure ...")
-        fig_genome_three_panel(df_win, df_sum, figures_folder)
+    print("[INFO] Generating genome-wide summary figure ...")
+    fig_genome_three_panel(df_win, df_sum, figures_folder)
 
-    if figures in ("contigs", "all"):
-        print("[INFO] Generating raw per-contig figures ...")
-        fig_per_contig_raw(df_win, df_sum, figures_folder)
-        print("[INFO] Generating rolling per-contig figures ...")
-        fig_per_contig_rolling(df_win, df_sum, figures_folder, rolling_target_bp)
+    print("[INFO] Generating raw per-contig figures ...")
+    fig_per_contig_raw(df_win, df_sum, figures_folder)
+    print("[INFO] Generating rolling per-contig figures ...")
+    fig_per_contig_rolling(df_win, df_sum, figures_folder, rolling_target_bp)
 
     print(f"\n[INFO] All figures saved to: {figures_folder}")
 
@@ -865,7 +856,7 @@ def main():
         sys.exit("[ERROR] -r/--rolling must be a positive integer (kb)")
 
     if args.module == "mapq_softclip":
-        run_mapq_softclip(args.input, args.figures, args.rolling * 1000)
+        run_mapq_softclip(args.input, args.rolling * 1000)
     elif args.module == "hese":
         run_hese(args.input)
 

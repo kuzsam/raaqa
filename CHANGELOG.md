@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ---
 
+## [0.3.0] - unreleased
+
+### Added
+- `hese` module — phasing quality assessment from parental idxstats and hifiasm path PAFs
+  - Library-size-normalised unitig labeling (P1/P2/amb) and haplotig labeling by majority vote
+  - Structural Hamming and switch-error rates for each haplotype
+  - Optional truth evaluation from MashMap PAFs: auto-detected or user-supplied haplotype suffix pairs, configurable alignment filters, orientation inference, per-chromosome metrics
+  - Outputs: `unitig_labels.csv`, `haplotig_labels.csv`, `haplotype_summary.csv`, `run_log.txt`, and optionally `truth_assignments.csv`, `truth_chrom_metrics.csv`, `truth_eval_summary.csv`
+- `visualise`: `hese` module support via `-m hese` — five figures covering label distributions, label balance, signal penetration, signal depth, and phasing errors
+
+### Changed
+- `mapq_softclip`, `visualise`: docstrings added to all functions
+- `visualise`: `-r/--rolling` clarified as `mapq_softclip` module only
+- `environment.yml`: added `pip` as explicit dependency
+
+---
+
 ## [0.2.0] - 2026-05-01
 
 ### Added

@@ -170,7 +170,7 @@ class TestMakeFiguresFolder:
 # ── check_input ───────────────────────────────────────────────────────────────
 
 class TestCheckInput:
-    """Exits if the input folder or required CSV files are missing (mapq_softclip module only)."""
+    """Exits if the input folder or required CSV files are missing."""
 
     def test_missing_folder_exits(self):
         with pytest.raises(SystemExit, match="Input folder not found"):
@@ -193,54 +193,62 @@ class TestCheckInput:
         (tmp_path / "summary_stats.csv").touch()
         check_input(str(tmp_path), "mapq_softclip")   # must not raise
 
-    def test_hese_module_no_file_check(self, tmp_path):
-        # hese module only checks folder existence, not file contents
-        check_input(str(tmp_path), "hese")   # must not raise even with no files
+    def test_hese_missing_file_exits(self, tmp_path):
+        (tmp_path / "haplotype_summary.csv").touch()
+        (tmp_path / "unitig_labels.csv").touch()
+        with pytest.raises(SystemExit, match="haplotig_labels.csv"):
+            check_input(str(tmp_path), "hese")
+
+    def test_hese_all_files_present_no_exit(self, tmp_path):
+        (tmp_path / "haplotig_labels.csv").touch()
+        (tmp_path / "haplotype_summary.csv").touch()
+        (tmp_path / "unitig_labels.csv").touch()
+        check_input(str(tmp_path), "hese")   # must not raise
 
 
 # ── _build_genome_xaxis ───────────────────────────────────────────────────────
 
 class TestBuildGenomeXaxis:
-    """Computes cumulative genome positions, midpoint tick labels, and per-chrom offsets."""
+    """Assigns integer x-axis indices for equal-spaced genome-wide plots."""
 
     def _win_df(self, chrom, ends):
         return pd.DataFrame({"Chromosome": chrom, "End": ends})
 
-    def test_single_chrom_genome_pos(self):
+    def test_single_chrom_total_is_one(self):
         df = self._win_df("chr1", [1000, 2000, 3000])
-        genome_pos, *_ = _build_genome_xaxis(df, ["chr1"])
-        assert genome_pos == 3000
+        total, *_ = _build_genome_xaxis(df, ["chr1"])
+        assert total == 1
 
-    def test_single_chrom_tick_at_midpoint(self):
+    def test_single_chrom_tick_at_index_zero(self):
         df = self._win_df("chr1", [1000, 2000, 3000])
         _, _, ticks, _, _ = _build_genome_xaxis(df, ["chr1"])
-        assert ticks == [1500]   # 0 + 3000/2
+        assert ticks == [0]
 
     def test_single_chrom_label(self):
         df = self._win_df("chr1", [1000, 2000, 3000])
         _, _, _, labels, _ = _build_genome_xaxis(df, ["chr1"])
         assert labels == ["chr1"]
 
-    def test_single_chrom_offset_is_zero(self):
+    def test_single_chrom_index_is_zero(self):
         df = self._win_df("chr1", [1000, 2000, 3000])
         _, _, _, _, chrom_x = _build_genome_xaxis(df, ["chr1"])
-        assert chrom_x["chr1"][1] == 0   # genome_offset
+        assert chrom_x["chr1"][1] == 0
 
-    def test_two_chroms_genome_pos_is_sum(self):
+    def test_two_chroms_total_is_two(self):
         df = pd.concat([
             self._win_df("chr1", [1000, 2000, 3000]),
             self._win_df("chr2", [1000, 2000]),
         ])
-        genome_pos, *_ = _build_genome_xaxis(df, ["chr1", "chr2"])
-        assert genome_pos == 5000   # 3000 + 2000
+        total, *_ = _build_genome_xaxis(df, ["chr1", "chr2"])
+        assert total == 2
 
-    def test_two_chroms_second_offset_equals_first_length(self):
+    def test_two_chroms_second_index_is_one(self):
         df = pd.concat([
             self._win_df("chr1", [1000, 2000, 3000]),
             self._win_df("chr2", [1000, 2000]),
         ])
         _, _, _, _, chrom_x = _build_genome_xaxis(df, ["chr1", "chr2"])
-        assert chrom_x["chr2"][1] == 3000   # chr2 starts where chr1 ends
+        assert chrom_x["chr2"][1] == 1
 
     def test_two_chroms_ticks_and_labels_ordered(self):
         df = pd.concat([
@@ -249,8 +257,8 @@ class TestBuildGenomeXaxis:
         ])
         _, _, ticks, labels, _ = _build_genome_xaxis(df, ["chr1", "chr2"])
         assert labels == ["chr1", "chr2"]
-        assert ticks[0] == 1500          # chr1 midpoint
-        assert ticks[1] == 3000 + 1000   # chr2 offset + chr2_len/2
+        assert ticks[0] == 0
+        assert ticks[1] == 1
 
     def test_chrom_absent_from_df_is_skipped(self):
         df = self._win_df("chr1", [1000, 2000, 3000])

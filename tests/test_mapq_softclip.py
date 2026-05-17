@@ -233,7 +233,10 @@ class TestSanitiseFilename:
         assert _sanitise_filename("file.name-v1") == "file.name-v1"
 
     def test_special_chars_replaced(self):
-        assert _sanitise_filename("contig!@#$") == "contig____"
+        assert _sanitise_filename("contig!@#$") == "contig_"
+
+    def test_consecutive_special_chars_collapsed(self):
+        assert _sanitise_filename("contig!@#$name") == "contig_name"
 
     def test_alphanumeric_unchanged(self):
         assert _sanitise_filename("ABC123") == "ABC123"
@@ -655,79 +658,66 @@ class TestValidateInputs:
 class TestAccumulateReadIntoWindows:
     """Base/softclip/MAPQ accumulation per CIGAR op; soft-clips anchored to read ends."""
 
-    def _chrom_hist(self):
-        return [0] * (MAX_MAPQ + 1)
-
     def test_empty_cigar_returns_early(self):
         read = _MockRead(cigartuples=[], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 0
 
     def test_match_op_adds_bases(self):
         read = _MockRead([(0, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        chrom_hist = self._chrom_hist()
-        _accumulate_read_into_windows(read, windows, 60, chrom_hist)
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 100
         assert windows[0]["hist"][60] == 100
-
-    def test_match_op_updates_chrom_hist(self):
-        read = _MockRead([(0, 100)], ref_start=0, ref_end=100)
-        chrom_hist = self._chrom_hist()
-        _accumulate_read_into_windows(read, [_make_window(0, 5000)], 60, chrom_hist)
-        assert chrom_hist[60] == 100
 
     def test_match_op_spanning_two_windows(self):
         # 8000M: window [0,5000] gets 5000 bases, window [5000,10000] gets 3000
         read = _MockRead([(0, 8000)], ref_start=0, ref_end=8000)
         w1, w2 = _make_window(0, 5000), _make_window(5000, 5000)
-        _accumulate_read_into_windows(read, [w1, w2], 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, [w1, w2], 60)
         assert w1["total_bases"] == 5000
         assert w2["total_bases"] == 3000
 
     def test_match_outside_window_not_counted(self):
         read = _MockRead([(0, 100)], ref_start=6000, ref_end=6100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 0
 
     def test_insertion_adds_bases_at_rpos(self):
         # 50M 10I 50M → 50+50 from M + 10 from I = 110
         read = _MockRead([(0, 50), (1, 10), (0, 50)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 110
 
     def test_deletion_advances_position_no_bases(self):
         # 50M 100D 50M → only the 2×50M bases counted
         read = _MockRead([(0, 50), (2, 100), (0, 50)], ref_start=0, ref_end=200)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 100
 
     def test_skip_op_advances_position_no_bases(self):
         # 50M 100N 50M (N = skipped/intron) → only 2×50M
         read = _MockRead([(0, 50), (3, 100), (0, 50)], ref_start=0, ref_end=200)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 100
 
     def test_mapq_none_skips_hist(self):
         read = _MockRead([(0, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        chrom_hist = self._chrom_hist()
-        _accumulate_read_into_windows(read, windows, None, chrom_hist)
+        _accumulate_read_into_windows(read, windows, None)
         assert windows[0]["total_bases"] == 100
         assert sum(windows[0]["hist"]) == 0
-        assert sum(chrom_hist) == 0
 
     def test_mapq_255_remapped_to_zero(self):
         # MAPQ 255 = "not available" in SAM spec; remapped to 0 before histogram
         read = _MockRead([(0, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        chrom_hist = self._chrom_hist()
-        _accumulate_read_into_windows(read, windows, 255, chrom_hist)
+        _accumulate_read_into_windows(read, windows, 255)
         assert windows[0]["hist"][0] == 100
         assert windows[0]["hist"][255] == 0
 
@@ -735,49 +725,48 @@ class TestAccumulateReadIntoWindows:
         # 10S 100M, ref_start=50 → left clip anchored at 50, inside [0, 5000]
         read = _MockRead([(4, 10), (0, 100)], ref_start=50, ref_end=150)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["softclip_bases"] == 10
 
     def test_right_softclip_anchored_to_read_end(self):
         # 100M 15S, ref_start=0, ref_end=100 → right clip anchored at ref 99
         read = _MockRead([(0, 100), (4, 15)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["softclip_bases"] == 15
 
     def test_both_softclips(self):
         read = _MockRead([(4, 5), (0, 100), (4, 10)], ref_start=50, ref_end=150)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["softclip_bases"] == 15
 
     def test_hard_clip_before_softclip_left(self):
         # 10H 5S 100M → left_sc = 5
         read = _MockRead([(5, 10), (4, 5), (0, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["softclip_bases"] == 5
 
     def test_sequence_match_op_7(self):
         # op=7 (=, sequence match) treated same as M
         read = _MockRead([(7, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 100
 
     def test_sequence_mismatch_op_8(self):
         # op=8 (X, sequence mismatch) treated same as M
         read = _MockRead([(8, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        _accumulate_read_into_windows(read, windows, 60, self._chrom_hist())
+        _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 100
 
     def test_mapq_zero_counted_at_hist_zero(self):
         # MAPQ 0 is a valid mapping quality (not a sentinel); must land in hist[0], not be dropped
         read = _MockRead([(0, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
-        chrom_hist = self._chrom_hist()
-        _accumulate_read_into_windows(read, windows, 0, chrom_hist)
+        _accumulate_read_into_windows(read, windows, 0)
         assert windows[0]["hist"][0] == 100
         assert sum(windows[0]["hist"]) == 100
 

@@ -20,7 +20,7 @@ dependencies:
   - pytest>=7.0
 
   # --- Preprocessing tools ---
-  # Required to generate inputs for mapq_softclip module:
+  # Generating inputs for analytical modules:
   - samtools>=1.17
-  # Required to generate inputs for hese module:
-  #
+  - minimap2>=2.26
+  - mashmap>=3.0

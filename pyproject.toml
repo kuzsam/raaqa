@@ -19,6 +19,7 @@ dependencies = [
 [project.scripts]
 mapq_softclip = "raaqa.mapq_softclip:main"
 visualise = "raaqa.visualise:main"
+hese = "raaqa.hese:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -15,6 +15,8 @@ All notable changes to this project will be documented in this file.
 - `visualise`: `hese` module support via `-m hese` — five figures covering label distributions, label balance, signal penetration, signal depth, and phasing errors
 
 ### Changed
+- `hese`: global parent assignment uses majority haplotig count first, combined Hamming and switch error as tiebreaker when counts are equal
+- `visualise`: various `hese` figure improvements
 - `mapq_softclip`, `visualise`: docstrings added to all functions
 - `visualise`: `-r/--rolling` clarified as `mapq_softclip` module only
 - `environment.yml`: added `pip` as explicit dependency

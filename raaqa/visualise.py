@@ -969,7 +969,7 @@ def fig_hese_label_balance(df_hap, figures_folder):
 
     ratio_str = f"{n_p1/n_p2:.1f}:1" if n_p2 > 0 else "inf"
 
-    fig, ax = plt.subplots(figsize=(5, 3), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(5, 1.8), constrained_layout=True)
     apply_style(fig, ax)
 
     segments = [
@@ -1059,7 +1059,7 @@ def fig_hese_label_distributions(df_uni, df_hap, figures_folder):
     uni_counts = df_uni["label"].value_counts()
     hap_counts = df_hap["label"].value_counts()
 
-    fig, (ax_uni, ax_hap) = plt.subplots(1, 2, figsize=(9, 4), constrained_layout=True)
+    fig, (ax_uni, ax_hap) = plt.subplots(1, 2, figsize=(7, 4), constrained_layout=True)
     apply_style(fig, [ax_uni, ax_hap])
 
     for ax, counts, total, title, ylabel in [
@@ -1146,26 +1146,39 @@ def fig_hese_phasing_errors(df_sum, df_truth_eval, figures_folder):
 
     If df_truth_eval is provided, overall truth reference lines are added to the plot.
     """
-    groups = [("hap1", "P1"), ("hap1", "P2"), ("hap2", "P1"), ("hap2", "P2")]
+    groups = []
+    global_parents = {}
+    for hap in ["hap1", "hap2"]:
+        hap_rows = df_sum[df_sum["hap"] == hap]
+        if hap_rows.empty:
+            continue
+        gp = str(hap_rows["hap_global_parent"].iloc[0]).strip()
+        global_parents[hap] = gp
+        best = hap_rows[hap_rows["assigned_parent"] == gp]
+        if best.empty:
+            continue
+        groups.append((hap, gp, best))
+
     bar_width = 0.3
     x = np.arange(len(groups))
 
-    fig, ax = plt.subplots(figsize=(8, 5), constrained_layout=True)
+    fig, ax = plt.subplots(figsize=(6, 4), constrained_layout=True)
     apply_style(fig, ax)
 
+    all_vals = []
     for i, (metric_col, color, legend_label) in enumerate([
         ("hamming_struct_%", ERR_HAMMING, "Hamming structural"),
         ("switch_struct_%",  ERR_SWITCH,  "Switch structural"),
     ]):
         offset = (i - 0.5) * bar_width
         vals = []
-        for hap, assigned in groups:
-            row = df_sum[(df_sum["hap"] == hap) & (df_sum["assigned_parent"] == assigned)]
+        for hap, assigned, row in groups:
             v = row[metric_col].iloc[0] if not row.empty else np.nan
             vals.append(float(v) if v != "NA" else np.nan)
+        all_vals.extend(vals)
         bars = ax.bar(x + offset, vals, width=bar_width * 0.9, color=color, label=legend_label, zorder=3)
         for bar, val in zip(bars, vals):
-            if np.isfinite(val):
+            if np.isfinite(val) and val > 0:
                 ax.text(
                     bar.get_x() + bar.get_width() / 2,
                     bar.get_height() + 0.3,
@@ -1181,18 +1194,15 @@ def fig_hese_phasing_errors(df_sum, df_truth_eval, figures_folder):
                    label=f"Hamming truth (overall)  {hamming_truth:.1f}%")
         ax.axhline(switch_truth,  color=ERR_SWITCH_TRUTH,  linewidth=1.4, linestyle="--", zorder=4,
                    label=f"Switch truth (overall)  {switch_truth:.1f}%")
+        all_vals.extend([hamming_truth, switch_truth])
 
-    global_parents = {}
-    for hap in ["hap1", "hap2"]:
-        row = df_sum[df_sum["hap"] == hap]
-        if not row.empty:
-            global_parents[hap] = str(row["hap_global_parent"].iloc[0]).strip()
-
-    xtick_labels = [f"{hap}\nassigned {assigned}" for hap, assigned in groups]
+    xtick_labels = [f"{hap}\nassigned {assigned}" for hap, assigned, _ in groups]
     ax.set_xticks(x)
     ax.set_xticklabels(xtick_labels, fontsize=9, color=TEXT_DIM, fontfamily=FONT_MAIN)
     ax.set_ylabel("Error %", color=TEXT_DIM, fontsize=10, fontfamily=FONT_MAIN)
-    ax.set_ylim(bottom=0)
+    finite_vals = [v for v in all_vals if np.isfinite(v)]
+    max_val = max(finite_vals) if finite_vals else 0
+    ax.set_ylim(0, max(max_val * 1.35 + 0.5, 2.0))
 
     shared_parent = None
     if len(global_parents) == 2 and len(set(global_parents.values())) == 1:

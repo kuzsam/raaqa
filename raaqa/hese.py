@@ -409,6 +409,48 @@ def haplotype_struct_metrics(haplotigs, forced_parent=None):
     }
 
 
+def pick_best_assignment(metrics_p1, metrics_p2):
+    """Return 'P1', 'P2', or 'amb' for the best parent assignment.
+
+    Compares n_haplotigs_p1 vs n_haplotigs_p2 counts first. If tied, falls back to
+    Hamming structural % then switch structural % as secondary tiebreakers.
+    """
+    n_p1 = metrics_p1["n_haplotigs_p1"]
+    n_p2 = metrics_p1["n_haplotigs_p2"]
+
+    if n_p1 > n_p2:
+        return "P1"
+    if n_p2 > n_p1:
+        return "P2"
+
+    h1 = metrics_p1["hamming_struct_%"]
+    h2 = metrics_p2["hamming_struct_%"]
+    s1 = metrics_p1["switch_struct_%"]
+    s2 = metrics_p2["switch_struct_%"]
+
+    h1_ok = isinstance(h1, float)
+    h2_ok = isinstance(h2, float)
+    s1_ok = isinstance(s1, float)
+    s2_ok = isinstance(s2, float)
+
+    score1 = (h1 if h1_ok else 0) + (s1 if s1_ok else 0)
+    score2 = (h2 if h2_ok else 0) + (s2 if s2_ok else 0)
+    has_any1 = h1_ok or s1_ok
+    has_any2 = h2_ok or s2_ok
+
+    if has_any1 and has_any2:
+        if score1 < score2:
+            return "P1"
+        if score2 < score1:
+            return "P2"
+    elif has_any1:
+        return "P1"
+    elif has_any2:
+        return "P2"
+
+    return "amb"
+
+
 # ============================================================
 # 5) Truth parsing
 # ============================================================
@@ -918,8 +960,14 @@ def run_analysis(args, folder, hap1_suffix, hap2_suffix):
     hap1_metrics_p2 = haplotype_struct_metrics(hap1_haplotigs, forced_parent="P2")
     hap2_metrics_p1 = haplotype_struct_metrics(hap2_haplotigs, forced_parent="P1")
     hap2_metrics_p2 = haplotype_struct_metrics(hap2_haplotigs, forced_parent="P2")
-    hap1_natural = hap1_metrics_p1 if hap1_metrics_p1["hap_global_parent"] == "P1" else hap1_metrics_p2
-    hap2_natural = hap2_metrics_p1 if hap2_metrics_p1["hap_global_parent"] == "P1" else hap2_metrics_p2
+    hap1_best = pick_best_assignment(hap1_metrics_p1, hap1_metrics_p2)
+    hap2_best = pick_best_assignment(hap2_metrics_p1, hap2_metrics_p2)
+    for m in (hap1_metrics_p1, hap1_metrics_p2):
+        m["hap_global_parent"] = hap1_best
+    for m in (hap2_metrics_p1, hap2_metrics_p2):
+        m["hap_global_parent"] = hap2_best
+    hap1_natural = hap1_metrics_p1 if hap1_best != "P2" else hap1_metrics_p2
+    hap2_natural = hap2_metrics_p1 if hap2_best != "P2" else hap2_metrics_p2
     print(f"  Hap1 - global parent: {hap1_natural['hap_global_parent']}  "
           f"P1: {hap1_natural['n_haplotigs_p1']}  P2: {hap1_natural['n_haplotigs_p2']}  "
           f"amb: {hap1_natural['n_haplotigs_amb']}  "

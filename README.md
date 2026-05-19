@@ -232,7 +232,7 @@ figures/
 
 **`hese_signal_depth.png`** — scatter plot of informative unitig count for haplotigs labelled P1 (left) and P2 (right), with per-group medians overlaid. Shows how strongly parental signal is supported within labeled haplotigs.
 
-**`hese_phasing_errors.png`** — grouped bar chart with four groups: hap1 assigned P1, hap1 assigned P2, hap2 assigned P1, hap2 assigned P2. Each group shows Hamming and switch error %. If truth PAFs were provided, dashed reference lines show truth-evaluated overall error rates. Title turns red with an additional line if both haplotypes claimed the same global parent (phasing separation failure).
+**`hese_phasing_errors.png`** — grouped bar chart showing Hamming and switch error % for the best parent assignment of each haplotype. If truth PAFs were provided, dashed reference lines show truth-evaluated overall error rates. Title turns red with an additional line if both haplotypes claimed the same global parent (phasing separation failure).
 
 </details>
 
@@ -357,7 +357,7 @@ Contains 4 rows, one for each combination of haplotype (hap1/hap2) × assigned p
 | Column | Description |
 |---|---|
 | hap | Haplotype: `hap1` or `hap2` |
-| hap_global_parent | Majority-vote parental assignment for this haplotype (`P1`, `P2`, or `amb`) |
+| hap_global_parent | Majority-vote parental assignment for this haplotype (`P1`, `P2`, or `amb`), ties broken by combined Hamming and switch error |
 | assigned_parent | Parent used for error calculation in this row (`P1` or `P2`) |
 | n_haplotigs_total | Total haplotigs in this haplotype |
 | n_haplotigs_p1 | Haplotigs labelled P1 |

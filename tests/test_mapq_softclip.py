@@ -2,8 +2,8 @@
 Tests for the mapq_softclip module.
 
 Organised as:
-  UNIT TESTS        — isolated function tests using mocks and synthetic inputs
-  INTEGRATION TESTS — full run_analysis pipeline against synthetic BAM files
+  UNIT TESTS        - isolated function tests using mocks and synthetic inputs
+  INTEGRATION TESTS - full run_analysis pipeline against synthetic BAM files
 """
 
 import argparse
@@ -110,17 +110,17 @@ class TestComputeMedianFromHist:
         assert compute_median_from_hist(_hist_at(MAX_MAPQ - 1)) == MAX_MAPQ - 1
 
     def test_equal_weight_returns_lower(self):
-        # midpoint=1.0, cumulative at 40 reaches 1 >= 1.0 → 40
+        # midpoint=1.0, cumulative at 40 reaches 1 >= 1.0, median is 40
         h = _hist_multi([(40, 1), (60, 1)])
         assert compute_median_from_hist(h) == 40
 
     def test_skewed_weight_returns_higher(self):
-        # total=4, midpoint=2.0 — cumulative at 40 is 1 < 2, at 60 is 4 >= 2 → 60
+        # total=4, midpoint=2.0: cumulative at 40 is 1 < 2, at 60 is 4 >= 2, median is 60
         h = _hist_multi([(40, 1), (60, 3)])
         assert compute_median_from_hist(h) == 60
 
     def test_heavy_lower_half(self):
-        # total=4, midpoint=2.0 — cumulative at 20 is 3 >= 2 → 20
+        # total=4, midpoint=2.0: cumulative at 20 is 3 >= 2, median is 20
         h = _hist_multi([(20, 3), (80, 1)])
         assert compute_median_from_hist(h) == 20
 
@@ -129,12 +129,12 @@ class TestComputeMedianFromHist:
         assert compute_median_from_hist(h) == 30
 
     def test_multiple_bins_known_result(self):
-        # total=4, midpoint=2.0 — at 10: cum=1<2, at 20: cum=3>=2 → 20
+        # total=4, midpoint=2.0, at 10: cum=1<2, at 20: cum=3>=2, median is 20
         h = _hist_multi([(10, 1), (20, 2), (30, 1)])
         assert compute_median_from_hist(h) == 20
 
     def test_many_reads_all_mapq_zero(self):
-        # 100 bases all at MAPQ 0 — median must be 0, not NaN or any other value
+        # 100 bases all at MAPQ 0: median must be 0, not NaN or any other value
         h = _hist_at(0, 100)
         assert compute_median_from_hist(h) == 0
 
@@ -171,7 +171,7 @@ class TestComputeMeanFromHist:
 
 
 class TestFormatOrEmpty:
-    """NaN → empty string (used for NO_COVERAGE fields); finite values formatted normally."""
+    """NaN converts to empty string (for NO_COVERAGE windows). Finite values formatted normally."""
 
     def test_nan_returns_empty(self):
         assert _format_or_empty(math.nan) == ""
@@ -287,7 +287,7 @@ class TestGetSoftclipBases:
         assert get_softclip_bases(read) == 0
 
     def test_hard_clip_combined_with_soft_clip(self):
-        # 10H 5S 90M → only the 5 soft-clipped bases count; hard clip must not be added
+        # 10H 5S 90M: only the 5 soft-clipped bases count, hard clip must not be added
         read = MagicMock()
         read.cigartuples = [(5, 10), (4, 5), (0, 90)]
         assert get_softclip_bases(read) == 5
@@ -381,7 +381,7 @@ class TestCreateWindows:
         assert finished is False
 
     def test_stretching_near_chrom_end(self):
-        # remainder = 5200-5000 = 200 <= max_stretch(1500) → stretch to chrom_len
+        # remainder = 5200-5000 = 200 <= max_stretch(1500), stretched to chrom_len
         windows, _, finished = _create_windows(
             next_window_start=0,
             limit_start=4999,
@@ -394,7 +394,7 @@ class TestCreateWindows:
         assert finished is True
 
     def test_no_stretch_when_remainder_too_large(self):
-        # remainder = 10000-5000 = 5000 > max_stretch(1500) → no stretch
+        # remainder = 10000-5000 = 5000 > max_stretch(1500), no stretch
         windows, _, finished = _create_windows(
             next_window_start=0,
             limit_start=0,
@@ -406,7 +406,7 @@ class TestCreateWindows:
         assert finished is False
 
     def test_window_clipped_to_chrom_end(self):
-        # chrom_len=4800 < window_bp=5000, w_end overshoots → clip
+        # chrom_len=4800 < window_bp=5000, w_end overshoots, clipped
         windows, _, finished = _create_windows(
             next_window_start=0,
             limit_start=4799,
@@ -429,7 +429,7 @@ class TestCreateWindows:
         assert next_start == 5000
 
 
-# ── _flush_window_to_csv — flags ──────────────────────────────────────────────
+# ── _flush_window_to_csv: flags ───────────────────────────────────────────────
 
 
 class TestFlushWindowFlags:
@@ -464,7 +464,7 @@ class TestFlushWindowFlags:
         assert row[-1] == ""
 
     def test_exactly_at_thresholds_is_clean(self):
-        # read_count == threshold (not <), depth == threshold (not <) → clean
+        # read_count == threshold (not <), depth == threshold (not <), both clean
         row = _flush_and_get_row(
             _window_with(
                 0,
@@ -491,7 +491,7 @@ class TestFlushWindowFlags:
         assert "LOW_DEPTH" in row[-1]
 
 
-# ── _flush_window_to_csv — output values ──────────────────────────────────────
+# ── _flush_window_to_csv: output values ───────────────────────────────────────
 
 
 class TestFlushWindowOutput:
@@ -686,21 +686,21 @@ class TestAccumulateReadIntoWindows:
         assert windows[0]["total_bases"] == 0
 
     def test_insertion_adds_bases_at_rpos(self):
-        # 50M 10I 50M → 50+50 from M + 10 from I = 110
+        # 50M 10I 50M: 50+50 from M + 10 from I = 110
         read = _MockRead([(0, 50), (1, 10), (0, 50)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
         _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 110
 
     def test_deletion_advances_position_no_bases(self):
-        # 50M 100D 50M → only the 2×50M bases counted
+        # 50M 100D 50M: only the 2×50M bases counted
         read = _MockRead([(0, 50), (2, 100), (0, 50)], ref_start=0, ref_end=200)
         windows = [_make_window(0, 5000)]
         _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["total_bases"] == 100
 
     def test_skip_op_advances_position_no_bases(self):
-        # 50M 100N 50M (N = skipped/intron) → only 2×50M
+        # 50M 100N 50M (N = skipped/intron): only 2×50M
         read = _MockRead([(0, 50), (3, 100), (0, 50)], ref_start=0, ref_end=200)
         windows = [_make_window(0, 5000)]
         _accumulate_read_into_windows(read, windows, 60)
@@ -722,14 +722,14 @@ class TestAccumulateReadIntoWindows:
         assert windows[0]["hist"][255] == 0
 
     def test_left_softclip_anchored_to_read_start(self):
-        # 10S 100M, ref_start=50 → left clip anchored at 50, inside [0, 5000]
+        # 10S 100M, ref_start=50: left clip anchored at 50, inside [0, 5000]
         read = _MockRead([(4, 10), (0, 100)], ref_start=50, ref_end=150)
         windows = [_make_window(0, 5000)]
         _accumulate_read_into_windows(read, windows, 60)
         assert windows[0]["softclip_bases"] == 10
 
     def test_right_softclip_anchored_to_read_end(self):
-        # 100M 15S, ref_start=0, ref_end=100 → right clip anchored at ref 99
+        # 100M 15S, ref_start=0, ref_end=100: right clip anchored at ref 99
         read = _MockRead([(0, 100), (4, 15)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
         _accumulate_read_into_windows(read, windows, 60)
@@ -742,7 +742,7 @@ class TestAccumulateReadIntoWindows:
         assert windows[0]["softclip_bases"] == 15
 
     def test_hard_clip_before_softclip_left(self):
-        # 10H 5S 100M → left_sc = 5
+        # 10H 5S 100M: left_sc = 5
         read = _MockRead([(5, 10), (4, 5), (0, 100)], ref_start=0, ref_end=100)
         windows = [_make_window(0, 5000)]
         _accumulate_read_into_windows(read, windows, 60)
@@ -860,11 +860,11 @@ def _run_in(base, bam_path, window_kb=1.0, step_kb=1.0, threads=1):
 # ── output structure and CSV schema ──────────────────────────────────────────
 #
 # chr1 (5000 bp), two covered regions with a gap:
-#   [0,   1000) — 10 reads × 100M, MAPQ 60
-#   [1000,2000) — no reads → NO_COVERAGE
-#   [2000,3000) — no reads → NO_COVERAGE
-#   [3000,4000) —  5 reads × 100M, MAPQ 60
-#   [4000,5000) — no reads reach here → window never opened
+#   [0,   1000):  10 reads × 100M, MAPQ 60
+#   [1000,2000):  no reads, NO_COVERAGE
+#   [2000,3000):  no reads, NO_COVERAGE
+#   [3000,4000):   5 reads × 100M, MAPQ 60
+#   [4000,5000):  no reads reach here, window never opened
 #
 # Total: 15 reads, 4 windows, all MAPQ 60.
 
@@ -1007,7 +1007,7 @@ class TestSummaryStats:
 
 
 class TestWindowFlags:
-    """Flag column: gap windows → NO_COVERAGE; covered windows are not."""
+    """Flag column: gap windows are NO_COVERAGE, covered windows are not."""
 
     def _rows(self, analysis_output):
         return _read_csv(analysis_output["window_file"])[1:]
@@ -1034,7 +1034,7 @@ class TestWindowFlags:
 # ── window stretching ─────────────────────────────────────────────────────────
 #
 # chrom_len=5200, window=1kb, step=1kb
-# remainder after last full window = 5200-5000 = 200 ≤ max_stretch(300) → stretched
+# remainder after last full window = 5200-5000 = 200 ≤ max_stretch(300), stretched
 # expected windows: [0,1000) [1000,2000) [2000,3000) [3000,4000) [4000,5200)
 
 
@@ -1052,7 +1052,7 @@ def stretch_output(tmp_path_factory):
 
 
 class TestWindowStretching:
-    """Remainder ≤ 30% of window_bp → last window stretched to chrom_len, not truncated."""
+    """Remainder ≤ 30% of window_bp: last window stretched to chrom_len, not truncated."""
 
     def _rows(self, stretch_output):
         return _read_csv(stretch_output["window_file"])[1:]
@@ -1063,7 +1063,7 @@ class TestWindowStretching:
     def test_last_window_stretched_to_chrom_end(self, stretch_output):
         last = self._rows(stretch_output)[-1]
         assert last[1] == "4000"  # Start
-        assert last[2] == "5200"  # End — stretched, not 5000
+        assert last[2] == "5200"  # End: stretched to chrom_len, not 5000
 
     def test_no_window_ends_at_5000(self, stretch_output):
         assert "5000" not in [r[2] for r in self._rows(stretch_output)]
@@ -1072,7 +1072,7 @@ class TestWindowStretching:
 # ── window clipping ───────────────────────────────────────────────────────────
 #
 # chrom_len=4800, window=1kb, step=1kb
-# last window overshoots: w_end=5000 > 4800 → remainder=800 > max_stretch(300) → clipped
+# last window overshoots: w_end=5000 > 4800, remainder=800 > max_stretch(300), clipped
 # expected windows: [0,1000) [1000,2000) [2000,3000) [3000,4000) [4000,4800)
 
 
@@ -1090,7 +1090,7 @@ def clip_output(tmp_path_factory):
 
 
 class TestWindowClipping:
-    """Remainder > 30% of window_bp → overshooting window clipped to chrom_len, not stretched."""
+    """Remainder > 30% of window_bp: overshooting window clipped to chrom_len, not stretched."""
 
     def _rows(self, clip_output):
         return _read_csv(clip_output["window_file"])[1:]
@@ -1101,7 +1101,7 @@ class TestWindowClipping:
     def test_last_window_clipped_to_chrom_end(self, clip_output):
         last = self._rows(clip_output)[-1]
         assert last[1] == "4000"  # Start
-        assert last[2] == "4800"  # End — clipped, not 5000
+        assert last[2] == "4800"  # End: clipped to chrom_len, not 5000
 
     def test_no_window_ends_at_5000(self, clip_output):
         assert "5000" not in [r[2] for r in self._rows(clip_output)]
@@ -1163,8 +1163,8 @@ class TestReadSpanningBoundary:
 #
 # chr1 (5000 bp): 10 reads in [0,1000)
 # chr2 (3500 bp):  5 reads in [0,1000) + 1 read at 3000
-#   → remainder after [2000,3000) = 500 > 300 → no stretch
-#   → last window [3000,4000) clipped to 3500
+#   remainder after [2000,3000) = 500 > 300, no stretch
+#   last window [3000,4000) clipped to 3500
 # total reads: 16
 
 
@@ -1214,14 +1214,14 @@ class TestMultipleContigs:
         )[1:]
         last = rows[-1]
         assert last[1] == "3000"  # Start
-        assert last[2] == "3500"  # End — clipped to chr2 length
+        assert last[2] == "3500"  # End: clipped to chr2 length
 
 
 # ── contig shorter than one window ───────────────────────────────────────────
 #
-# chr1 (800 bp), window=1kb — the single window overshoots (w_end=1000 > 800)
+# chr1 (800 bp), window=1kb: the single window overshoots (w_end=1000 > 800)
 # and is clipped to [0, 800). 5 reads × 100bp: read_count=5 (no LOW_COVERAGE),
-# depth=500/800=0.625x → LOW_DEPTH fires.
+# depth=500/800=0.625x, LOW_DEPTH fires.
 
 
 @pytest.fixture(scope="module")
@@ -1250,7 +1250,7 @@ class TestShortContig:
         assert self._rows(short_contig_output)[0][1] == "0"
 
     def test_window_end_clipped_to_contig_length(self, short_contig_output):
-        # w_end=0+1000=1000 overshoots 800 → must be clipped, not left as 1000
+        # w_end=0+1000=1000 overshoots 800, must be clipped, not left as 1000
         assert self._rows(short_contig_output)[0][2] == "800"
 
     def test_reads_are_counted(self, short_contig_output):
@@ -1263,9 +1263,9 @@ class TestShortContig:
 # ── LOW_COVERAGE read-count boundary ─────────────────────────────────────────
 #
 # chr1 (2000 bp), window=1kb:
-#   [0,   1000): 4 reads → read_count=4 < 5  → LOW_COVERAGE fires
-#   [1000,2000): 5 reads → read_count=5 ≥ 5  → LOW_COVERAGE must NOT fire
-# Both windows are below 5x depth → LOW_DEPTH fires in both.
+#   [0,   1000): 4 reads, read_count=4 < 5, LOW_COVERAGE fires
+#   [1000,2000): 5 reads, read_count=5 ≥ 5, LOW_COVERAGE must NOT fire
+# Both windows are below 5x depth, LOW_DEPTH fires in both.
 
 
 @pytest.fixture(scope="module")
@@ -1324,7 +1324,7 @@ def softclip_output(tmp_path_factory):
     header = pysam.AlignmentHeader.from_dict(
         {"HD": {"VN": "1.6", "SO": "coordinate"}, "SQ": sq}
     )
-    # 10S90M — query length=100, reference length=90
+    # 10S90M: query length=100, reference length=90
     reads = _make_reads(
         header, [i * 90 for i in range(10)], seq_len=100, cigar=[(4, 10), (0, 90)]
     )
@@ -1343,7 +1343,7 @@ class TestSoftclipContent:
         assert int(self._rows(softclip_output)[0][7]) == 100
 
     def test_total_bases_includes_softclip(self, softclip_output):
-        # aligned (90M) + soft-clip (10S) both counted → 10 × 100 = 1000
+        # aligned (90M) + soft-clip (10S) both counted: 10 × 100 = 1000
         assert int(self._rows(softclip_output)[0][6]) == 1000
 
     def test_softclip_pct_exact(self, softclip_output):
@@ -1357,8 +1357,8 @@ class TestSoftclipContent:
 # ── MAPQ 0 reads ──────────────────────────────────────────────────────────────
 #
 # MAPQ 0 is a valid mapping quality (not the unmapped sentinel 255).
-# Reads must be counted and produce numeric MAPQ fields — not empty strings,
-# which are reserved for NO_COVERAGE windows.
+# Reads must be counted and produce numeric MAPQ fields. Empty strings
+# are reserved for NO_COVERAGE windows only.
 
 
 @pytest.fixture(scope="module")
@@ -1429,7 +1429,7 @@ class TestMapq255Remapping:
         assert int(self._row(mapq255_output)[5]) == 10
 
     def test_mean_mapq_remapped_to_zero(self, mapq255_output):
-        # MAPQ 255 → remapped to 0; mean must be 0.00, not 255.00
+        # MAPQ 255 remapped to 0, mean must be 0.00 not 255.00
         assert self._row(mapq255_output)[3] == "0.00"
 
     def test_median_mapq_remapped_to_zero(self, mapq255_output):
@@ -1442,9 +1442,9 @@ class TestMapq255Remapping:
 # They must not contribute to read_count, total_bases, or MAPQ.
 #
 # chr1 (1000 bp):
-#   5 primary reads × 100M, MAPQ 60   → counted
-#   5 secondary reads at same pos     → skipped
-#   5 supplementary reads at same pos → skipped
+#   5 primary reads × 100M, MAPQ 60:  counted
+#   5 secondary reads at same pos:    skipped
+#   5 supplementary reads at same pos: skipped
 # Expected: Read_Count=5, Total_Bases=500
 
 
@@ -1485,11 +1485,11 @@ class TestFilteredReads:
         return _read_csv(filtered_reads_output["window_file"])[1:][0]
 
     def test_only_primary_reads_counted(self, filtered_reads_output):
-        # 5 primary + 5 secondary + 5 supplementary → only 5 must appear
+        # 5 primary + 5 secondary + 5 supplementary: only 5 must appear
         assert int(self._row(filtered_reads_output)[5]) == 5  # Read_Count
 
     def test_bases_from_primary_reads_only(self, filtered_reads_output):
-        # 5 × 100M = 500; secondary/supplementary bases must not be included
+        # 5 × 100M = 500, secondary/supplementary bases must not be included
         assert int(self._row(filtered_reads_output)[6]) == 500  # Total_Bases
 
     def test_flag_is_not_no_coverage(self, filtered_reads_output):

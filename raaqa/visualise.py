@@ -87,6 +87,14 @@ def _safe_nanmax(values, default):
     return float(finite.max()) if len(finite) > 0 else default
 
 
+def _to_float_or_nan(val):
+    """Convert val to float, returning nan if conversion fails (e.g. for 'NA' strings)."""
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return math.nan
+
+
 def make_figures_folder(input_folder):
     """Create and return the figures/ subfolder inside the input directory."""
     figures_folder = os.path.join(input_folder, "figures")
@@ -365,7 +373,7 @@ def fig_genome_three_panel(df_win, df_sum, figures_folder):
         for v in contig_cov_means + contig_cov_meds + [mean_cov, median_cov]
         if np.isfinite(v)
     ]
-    cov_ylim_top = max(cov_vals) * 1.3 if cov_vals else 1.0
+    cov_ylim_top = max(max(cov_vals) * 1.3, 1.0) if cov_vals else 1.0
 
     ax_cov.set_xlim(-0.5, genome_pos - 0.5)
     ax_cov.set_ylim(0, cov_ylim_top)
@@ -1172,9 +1180,9 @@ def fig_hese_phasing_errors(df_sum, df_truth_eval, figures_folder):
     ]):
         offset = (i - 0.5) * bar_width
         vals = []
-        for hap, assigned, row in groups:
+        for hap, _, row in groups:
             v = row[metric_col].iloc[0] if not row.empty else np.nan
-            vals.append(float(v) if v != "NA" else np.nan)
+            vals.append(_to_float_or_nan(v))
         all_vals.extend(vals)
         bars = ax.bar(x + offset, vals, width=bar_width * 0.9, color=color, label=legend_label, zorder=3)
         for bar, val in zip(bars, vals):
@@ -1188,13 +1196,16 @@ def fig_hese_phasing_errors(df_sum, df_truth_eval, figures_folder):
                 )
 
     if df_truth_eval is not None and not df_truth_eval.empty:
-        hamming_truth = float(df_truth_eval["overall_hamming_%"].iloc[0])
-        switch_truth  = float(df_truth_eval["overall_switch_%"].iloc[0])
-        ax.axhline(hamming_truth, color=ERR_HAMMING_TRUTH, linewidth=1.4, linestyle="--", zorder=4,
-                   label=f"Hamming truth (overall)  {hamming_truth:.1f}%")
-        ax.axhline(switch_truth,  color=ERR_SWITCH_TRUTH,  linewidth=1.4, linestyle="--", zorder=4,
-                   label=f"Switch truth (overall)  {switch_truth:.1f}%")
-        all_vals.extend([hamming_truth, switch_truth])
+        hamming_truth = _to_float_or_nan(df_truth_eval["overall_hamming_%"].iloc[0])
+        switch_truth  = _to_float_or_nan(df_truth_eval["overall_switch_%"].iloc[0])
+        if np.isfinite(hamming_truth):
+            ax.axhline(hamming_truth, color=ERR_HAMMING_TRUTH, linewidth=1.4, linestyle="--", zorder=4,
+                       label=f"Hamming truth (overall)  {hamming_truth:.1f}%")
+            all_vals.append(hamming_truth)
+        if np.isfinite(switch_truth):
+            ax.axhline(switch_truth,  color=ERR_SWITCH_TRUTH,  linewidth=1.4, linestyle="--", zorder=4,
+                       label=f"Switch truth (overall)  {switch_truth:.1f}%")
+            all_vals.append(switch_truth)
 
     xtick_labels = [f"{hap}\nassigned {assigned}" for hap, assigned, _ in groups]
     ax.set_xticks(x)

@@ -2,8 +2,8 @@
 Tests for the hese module.
 
 Organised as:
-  UNIT TESTS        — isolated function tests using synthetic in-memory inputs
-  INTEGRATION TESTS — full pipeline calls against synthetic text files written to tmp_path
+  UNIT TESTS        - isolated function tests using synthetic in-memory inputs
+  INTEGRATION TESTS - full pipeline calls against synthetic text files written to tmp_path
 """
 
 import argparse
@@ -220,28 +220,28 @@ class TestComputeUnitigLabel:
         assert label == "P2"
 
     def test_balanced_fracs_below_threshold_is_amb(self):
-        # equal reads → frac_p1 = frac_p2 = 0.5, both below 0.60
+        # equal reads: frac_p1 = frac_p2 = 0.5, both below 0.60
         label, _, _ = self._call(500, 500, length=5000)
         assert label == "amb"
 
     def test_zero_total_p1_library_p2_wins(self):
-        # p1_norm forced to 0.0 → frac_p2 = 1.0 → P2 labelled
+        # p1_norm forced to 0.0: frac_p2 = 1.0, P2 labelled
         label, _, _ = self._call(100, 500, length=5000, total_p1_reads=0)
         assert label == "P2"
 
     def test_zero_total_p2_library_p1_wins(self):
-        # p2_norm forced to 0.0 → frac_p1 = 1.0 → P1 labelled
+        # p2_norm forced to 0.0: frac_p1 = 1.0, P1 labelled
         label, _, _ = self._call(500, 100, length=5000, total_p2_reads=0)
         assert label == "P1"
 
     def test_zero_norm_denom_is_amb(self):
-        # both libraries zero → p1_norm + p2_norm == 0
+        # both libraries zero: p1_norm + p2_norm == 0
         label, _, _ = self._call(100, 100, length=5000, total_p1_reads=0, total_p2_reads=0)
         assert label == "amb"
 
     def test_frac_exactly_at_threshold_is_labelled(self):
-        # frac_p1 must be exactly 0.60 and > frac_p2 → P1
-        # p1_norm/p2_norm = 0.60/0.40 → frac_p1 = 0.6/1.0 = 0.60
+        # frac_p1 must be exactly 0.60 and > frac_p2, labels P1
+        # p1_norm/p2_norm = 0.60/0.40: frac_p1 = 0.6/1.0 = 0.60
         label, _, _ = self._call(600, 400, length=5000, total_p1_reads=1000, total_p2_reads=1000)
         assert label == "P1"
 
@@ -330,21 +330,21 @@ class TestSummarizeHaplotigs:
         assert result["h1"]["label"] == "P2"
 
     def test_too_few_informative_is_amb(self):
-        # 2 informative (P1+P2) < min_unitigs_per_haplotig=3 → amb
+        # 2 informative (P1+P2) < min_unitigs_per_haplotig=3, label is amb
         unitigs = self._unitigs(["P1", "P2", "amb", "amb"])
         paths = {"h1": [f"utg{i}" for i in range(4)]}
         result = summarize_haplotigs(paths, unitigs, min_unitigs_per_haplotig=3, hap_frac_threshold=0.60)
         assert result["h1"]["label"] == "amb"
 
     def test_balanced_p1_p2_is_amb(self):
-        # frac_p1 = frac_p2 = 0.5 < 0.60 → amb
+        # frac_p1 = frac_p2 = 0.5 < 0.60, label is amb
         unitigs = self._unitigs(["P1", "P1", "P1", "P2", "P2", "P2"])
         paths = {"h1": [f"utg{i}" for i in range(6)]}
         result = summarize_haplotigs(paths, unitigs, min_unitigs_per_haplotig=3, hap_frac_threshold=0.60)
         assert result["h1"]["label"] == "amb"
 
     def test_unknown_unitig_treated_as_amb(self):
-        # utg_missing not in unitigs dict → .get returns None → counted as amb
+        # utg_missing not in unitigs dict: .get returns None, counted as amb
         unitigs = {"utg0": {"label": "P1"}, "utg1": {"label": "P1"}, "utg2": {"label": "P1"}}
         paths = {"h1": ["utg0", "utg1", "utg2", "utg_missing"]}
         result = summarize_haplotigs(paths, unitigs, min_unitigs_per_haplotig=3, hap_frac_threshold=0.60)
@@ -352,7 +352,7 @@ class TestSummarizeHaplotigs:
         assert result["h1"]["label"] == "P1"
 
     def test_all_amb_unitigs_is_amb(self):
-        # n_inf = 0 → below any min_unitigs threshold → label is amb
+        # n_inf = 0, below any min_unitigs threshold, label is amb
         unitigs = self._unitigs(["amb", "amb", "amb", "amb"])
         paths = {"h1": [f"utg{i}" for i in range(4)]}
         result = summarize_haplotigs(paths, unitigs, min_unitigs_per_haplotig=3, hap_frac_threshold=0.60)
@@ -430,7 +430,7 @@ class TestHaplotypeStructMetrics:
         assert m["hamming_struct_%"] == pytest.approx(0.0)
 
     def test_p1_majority_hamming_counts_p2_wrong(self):
-        # 3 P1, 1 P2 → global parent P1, hamming = 1/4 * 100 = 25%
+        # 3 P1, 1 P2: global parent P1, hamming = 1/4 * 100 = 25%
         haps = {"h0": _hap_entry("P1"), "h1": _hap_entry("P1"),
                 "h2": _hap_entry("P1"), "h3": _hap_entry("P2")}
         m = haplotype_struct_metrics(haps)
@@ -445,7 +445,7 @@ class TestHaplotypeStructMetrics:
         assert m["switch_struct_%"] == "NA"
 
     def test_switch_computed_correctly(self):
-        # 1 P1, 3 P2 → P2 majority; sorted: h0=P1 h1=P2 h2=P2 h3=P2 → 1 switch / 3 boundaries
+        # 1 P1, 3 P2: P2 majority, sorted: h0=P1 h1=P2 h2=P2 h3=P2, 1 switch / 3 boundaries
         haps = {"h0": _hap_entry("P1"), "h1": _hap_entry("P2"),
                 "h2": _hap_entry("P2"), "h3": _hap_entry("P2")}
         m = haplotype_struct_metrics(haps)
@@ -616,7 +616,7 @@ class TestParseTruthAssignments:
 
     def test_best_frac_below_threshold_excluded(self, tmp_path):
         p = tmp_path / "t.paf"
-        # h1 splits equally across HAP1 and HAP2 → best_frac = 0.5 < 0.60
+        # h1 splits equally across HAP1 and HAP2: best_frac = 0.5 < 0.60
         _write_file(p,
             _truth_paf_line("h1", 0, 60000, "chr1_HAP1", 0, 60000) +
             _truth_paf_line("h1", 60000, 120000, "chr1_HAP2", 0, 60000)
@@ -627,7 +627,7 @@ class TestParseTruthAssignments:
 
     def test_multiple_segments_aggregated(self, tmp_path):
         p = tmp_path / "t.paf"
-        # two segments both on HAP1 → total bp = 120000, best_frac = 1.0
+        # two segments both on HAP1: total bp = 120000, best_frac = 1.0
         _write_file(p,
             _truth_paf_line("h1", 0, 60000, "chr1_HAP1", 0, 60000) +
             _truth_paf_line("h1", 60000, 120000, "chr1_HAP1", 60000, 120000)
@@ -712,7 +712,7 @@ class TestBuildChromGroups:
 
 
 class TestScoreOrientation:
-    """Counts wrong predictions for a given HAP1→P1/P2 mapping; skips absent and amb haplotigs."""
+    """Counts wrong predictions for a given HAP1 to P1/P2 mapping. Skips absent and amb haplotigs."""
 
     _MAPPING = {"HAP1": "P1", "HAP2": "P2"}
 
@@ -772,28 +772,28 @@ class TestScoreOrientation:
 
 
 class TestChooseBestOrientation:
-    """Picks the HAP1/HAP2 → P1/P2 mapping with the lower wrong-rate; tie-breaks by total count."""
+    """Picks the HAP1/HAP2 to P1/P2 mapping with the lower wrong-rate, tie-breaks by total count."""
 
     def _truth_entry(self, truth_bin):
         return {"truth_bin": truth_bin, "chrom": "chr1", "tstart": 0, "tend": 1000,
                 "track": "chr1_HAP1", "best_bp": 60000, "all_bp": 60000, "best_frac": 1.0}
 
     def test_hap1_p1_wins_when_better(self):
-        # all HAP1 haplotigs labelled P1 → HAP1→P1 mapping has 0% error
+        # all HAP1 haplotigs labelled P1: HAP1 to P1 mapping has 0% error
         truth = {f"h{i}": self._truth_entry("HAP1") for i in range(4)}
         pred = {f"h{i}": {"label": "P1"} for i in range(4)}
         mapping, _ = choose_best_orientation(truth, pred)
         assert mapping == {"HAP1": "P1", "HAP2": "P2"}
 
     def test_hap1_p2_wins_when_better(self):
-        # all HAP1 haplotigs labelled P2 → HAP1→P2 mapping has 0% error
+        # all HAP1 haplotigs labelled P2: HAP1 to P2 mapping has 0% error
         truth = {f"h{i}": self._truth_entry("HAP1") for i in range(4)}
         pred = {f"h{i}": {"label": "P2"} for i in range(4)}
         mapping, _ = choose_best_orientation(truth, pred)
         assert mapping == {"HAP1": "P2", "HAP2": "P1"}
 
     def test_tie_broken_by_higher_total(self):
-        # equal rate; one candidate scores on more haplotigs → it wins
+        # equal rate, one candidate scores on more haplotigs, it wins
         truth = {
             "h1": self._truth_entry("HAP1"), "h2": self._truth_entry("HAP1"),
             "h3": self._truth_entry("HAP2"), "h4": self._truth_entry("HAP2"),
@@ -802,7 +802,7 @@ class TestChooseBestOrientation:
             "h1": {"label": "P1"}, "h2": {"label": "P2"},
             "h3": {"label": "P1"}, "h4": {"label": "P2"},
         }
-        # both mappings have 2 wrong / 4 → rate 0.5; total equal → first candidate kept
+        # both mappings have 2 wrong / 4, rate 0.5, total equal, first candidate kept
         mapping, total = choose_best_orientation(truth, pred)
         assert total == 4
 
@@ -853,7 +853,7 @@ class TestChromMetrics:
         assert overall["hamming_%"] == pytest.approx(50.0)
 
     def test_switch_counted_correctly(self):
-        # P1 P2 P1 → 2 switches / 2 boundaries = 100%
+        # P1 P2 P1: 2 switches / 2 boundaries = 100%
         truth = {"h1": self._truth_entry("chr1", "HAP1", 0),
                  "h2": self._truth_entry("chr1", "HAP1", 1000),
                  "h3": self._truth_entry("chr1", "HAP1", 2000)}
@@ -1059,7 +1059,7 @@ class TestResolveTruthSuffixes:
         assert s2 == "_HAP2"
 
     def test_hap1_paf_detection_fails_exits(self, tmp_path):
-        # unknown suffix → detect_truth_suffixes returns None → sys.exit
+        # unknown suffix: detect_truth_suffixes returns None, sys.exit
         h1 = self._paf_with(tmp_path, "h1.paf", "chr1_UNKNOWN")
         h2 = self._paf_with(tmp_path, "h2.paf", "chr1_HAP1", "chr1_HAP2")
         args = _make_args(truth_hap1_paf=h1, truth_hap2_paf=h2)
@@ -1074,7 +1074,7 @@ class TestResolveTruthSuffixes:
             resolve_truth_suffixes(args)
 
     def test_inconsistent_suffix_pairs_exits(self, tmp_path):
-        # hap1 PAF has _HAP1/_HAP2, hap2 PAF has _H1/_H2 → mismatch → sys.exit
+        # hap1 PAF has _HAP1/_HAP2, hap2 PAF has _H1/_H2, mismatch, sys.exit
         h1 = self._paf_with(tmp_path, "h1.paf", "chr1_HAP1", "chr1_HAP2")
         h2 = self._paf_with(tmp_path, "h2.paf", "chr1_H1", "chr1_H2")
         args = _make_args(truth_hap1_paf=h1, truth_hap2_paf=h2)
@@ -1089,19 +1089,19 @@ class TestResolveTruthSuffixes:
 # ── synthetic data helpers ────────────────────────────────────────────────────
 #
 # Synthetic assembly:
-#   utg1 (5000 bp): p1=800, p2=100  → P1
-#   utg2 (5000 bp): p1=100, p2=800  → P2
-#   utg3 (5000 bp): p1=200, p2=200  → amb  (equal fracs)
+#   utg1 (5000 bp): p1=800, p2=100, label P1
+#   utg2 (5000 bp): p1=100, p2=800, label P2
+#   utg3 (5000 bp): p1=200, p2=200, label amb (equal fracs)
 #
 # total_p1_reads = 1100, total_p2_reads = 1100
 #
 # Haplotigs:
-#   hap1 / h1: [utg1, utg1, utg1, utg2] → 3 P1 + 1 P2 → P1
-#   hap2 / h2: [utg2, utg2, utg2, utg1] → 3 P2 + 1 P1 → P2
+#   hap1 / h1: [utg1, utg1, utg1, utg2]: 3 P1 + 1 P2, label P1
+#   hap2 / h2: [utg2, utg2, utg2, utg1]: 3 P2 + 1 P1, label P2
 #
 # Truth PAFs (when used):
-#   h1 → chr1_HAP1  (qspan 60 kb)
-#   h2 → chr1_HAP2  (qspan 60 kb)
+#   h1 maps to chr1_HAP1  (qspan 60 kb)
+#   h2 maps to chr1_HAP2  (qspan 60 kb)
 
 
 def _write_core_inputs(folder):
@@ -1372,13 +1372,13 @@ class TestTruthRun:
         assert {hap1_label, hap2_label} == {"P1", "P2"}
 
     def test_perfect_phasing_hamming_zero(self, truth_output):
-        # h1→P1→HAP1, h2→P2→HAP2, correct orientation → 0 wrong
+        # h1-P1-HAP1, h2-P2-HAP2, correct orientation, 0 wrong
         rows = _read_csv_rows(truth_output["eval_summary_csv"])
         assert rows[0]["overall_wrong"] == "0"
 
     def test_perfect_phasing_switch_zero(self, truth_output):
         rows = _read_csv_rows(truth_output["eval_summary_csv"])
-        # single haplotig per chrom per bin → no boundaries → switch = NA
+        # single haplotig per chrom per bin: no boundaries, switch = NA
         assert rows[0]["overall_switch_%"] in ("0.0000", "NA")
 
 

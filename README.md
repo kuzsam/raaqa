@@ -297,7 +297,7 @@ hese -ip1 parent1.idxstats -ip2 parent2.idxstats \
 
 ### Input preparation
 
-The truth reference must have haplotype-specific contig/chromosome names with a consistent suffix pair, e.g. `chr1_MATERNAL` / `chr1_PATERNAL`. The suffix is auto-detected from a set of known pairs (`_MATERNAL/_PATERNAL`, `_MAT/_PAT`, `_HAP1/_HAP2`, `_H1/_H2`). Use `-s1`/`-s2` to override if your naming differs.
+The truth reference must have haplotype-specific contig/chromosome names with a consistent suffix pair, e.g. `chr1_MATERNAL` / `chr1_PATERNAL`. The suffix is auto-detected from a set of known pairs (`_MATERNAL/_PATERNAL`, `_MAT/_PAT`, `_HAPLOTYPE1/_HAPLOTYPE2`, `_HAP1/_HAP2`, `_H1/_H2`). Use `-s1`/`-s2` to override if your naming differs.
 
 ### Output
 

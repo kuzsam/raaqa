@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ---
 
-## [0.3.0] - unreleased
+## [0.3.0] - 2026-05-19
 
 ### Added
 - `hese` module — phasing quality assessment from parental idxstats and hifiasm path PAFs

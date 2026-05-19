@@ -2,11 +2,20 @@
 Tests for the visualise module.
 
 Organised as:
-  UNIT TESTS        — isolated function tests using direct inputs (no files)
-  INTEGRATION TESTS — run_mapq_softclip called with hand-crafted CSVs or a real
-                      BAM pipeline, verifying figure files are created correctly
+  UNIT TESTS
+    mapq_softclip helpers  - smart_bp_formatter, _sanitise_filename, _check_columns,
+                             make_figures_folder, check_input, _build_genome_xaxis
+    hese utilities         - _to_float_or_nan, _safe_nanmax, _read_min_unitigs
+
+  INTEGRATION TESTS
+    mapq_softclip figures  - run_mapq_softclip called with hand-crafted CSVs or a
+                             real BAM pipeline, asserting figure files are created
+    hese figures           - figure functions called with hand-crafted DataFrames,
+                             asserting file creation, warning on empty input, handling
+                             NA metric values, and run_hese end-to-end behaviour
 """
 
+import math
 import os
 
 import matplotlib
@@ -19,11 +28,20 @@ from raaqa.mapq_softclip import run_analysis
 from raaqa.visualise import (
     smart_bp_formatter,
     _sanitise_filename,
+    _safe_nanmax,
+    _to_float_or_nan,
     _check_columns,
     make_figures_folder,
     check_input,
     _build_genome_xaxis,
-    run_mapq_softclip
+    _read_min_unitigs,
+    fig_hese_label_balance,
+    fig_hese_signal_penetration,
+    fig_hese_label_distributions,
+    fig_hese_signal_depth,
+    fig_hese_phasing_errors,
+    run_hese,
+    run_mapq_softclip,
 )
 
 
@@ -280,10 +298,10 @@ class TestBuildGenomeXaxis:
 # ══════════════════════════════════════════════════════════════════════════════
 #
 # Tests verify that the expected output files are created at the correct paths.
-# Pixel content is not tested — the behavioural contract is "file created, no crash".
+# Pixel content is not tested - the behavioural contract is "file created, no crash".
 # Two levels:
-#   - hand-crafted CSVs → run_mapq_softclip (fast, no BAM needed)
-#   - synthetic BAM → run_analysis → run_mapq_softclip (full pipeline)
+#   - hand-crafted CSVs - run_mapq_softclip (fast, no BAM needed)
+#   - synthetic BAM - run_analysis - run_mapq_softclip (full pipeline)
 
 @pytest.fixture(scope="module")
 def csv_folder(tmp_path_factory):
@@ -323,7 +341,7 @@ class TestFigureEdgeCases:
 
     def test_single_window_contig_does_not_crash(self, tmp_path_factory):
         # A contig with only one window cannot compute a step size from two rows.
-        # The code falls back to "N/A (single window)" — it must not crash.
+        # The code falls back to "N/A (single window)" - it must not crash.
         out = str(tmp_path_factory.mktemp("vis_single_win"))
         _make_minimal_csvs(
             out,
@@ -345,7 +363,7 @@ class TestFigureEdgeCases:
         )
 
     def test_float_rolling_value_does_not_crash(self, tmp_path_factory):
-        # rolling_target_bp can be a float (e.g. 1.5 kb → 1500.5 bp)
+        # rolling_target_bp can be a float (e.g. 1.5 kb = 1500.5 bp)
         out = str(tmp_path_factory.mktemp("vis_float_rolling"))
         _make_minimal_csvs(out)
         run_mapq_softclip(out, rolling_target_bp=1500.5)
@@ -364,10 +382,10 @@ class TestFigureEdgeCases:
         assert "[WARN]" in capsys.readouterr().out
 
     def test_no_warning_when_rolling_fits_all_contigs(self, tmp_path_factory, capsys):
-        # rolling smaller than every contig — no [WARN] should appear
+        # rolling smaller than every contig, no [WARN] should appear
         out = str(tmp_path_factory.mktemp("vis_small_rolling"))
         _make_minimal_csvs(out)
-        run_mapq_softclip(out, rolling_target_bp=500)   # step=1000bp, 3 windows → fits
+        run_mapq_softclip(out, rolling_target_bp=500)   # step=1000bp, 3 windows, fits
         assert "[WARN]" not in capsys.readouterr().out
 
     def test_warning_message_contains_rolling_value(self, tmp_path_factory, capsys):
@@ -382,7 +400,7 @@ class TestFigureEdgeCases:
 
     def test_partial_capping_warns_when_only_some_contigs_exceeded(self, tmp_path_factory, capsys):
         # chr1 has 5 windows (step 1000bp), chr2 has 2 windows (step 1000bp)
-        # rolling=3500bp → uncapped_n=4, fits chr1 (5 windows) but caps chr2 (2 windows)
+        # rolling=3500bp: uncapped_n=4, fits chr1 (5 windows) but caps chr2 (2 windows)
         out = str(tmp_path_factory.mktemp("vis_partial_cap"))
         _make_minimal_csvs(
             out,
@@ -434,7 +452,7 @@ class TestFigureEdgeCases:
         )
 
 
-# ── full pipeline: mapq_softclip → visualise ──────────────────────────────────
+# ── full pipeline: mapq_softclip to visualise ─────────────────────────────────
 #
 # These tests use real run_analysis output rather than hand-crafted CSVs.
 # The fixture creates a two-contig BAM, runs mapq_softclip analysis, then
@@ -443,12 +461,12 @@ class TestFigureEdgeCases:
 # chr1 (3000 bp): 10 reads × 100M, MAPQ 60, one read per 100 bp
 # chr2 (2000 bp):  8 reads × 100M, MAPQ 40
 # windows: 1 kb / 1 kb step
-# → chr1: [0,1000) [1000,2000) [2000,3000)
-# → chr2: [0,1000) [1000,2000)
+# chr1: [0,1000) [1000,2000) [2000,3000)
+# chr2: [0,1000) [1000,2000)
 
 @pytest.fixture(scope="module")
 def pipeline_output(tmp_path_factory):
-    """BAM → run_analysis → run_mapq_softclip('all'). Returns the output folder path."""
+    """BAM to run_analysis to run_mapq_softclip. Returns the output folder path."""
     base = tmp_path_factory.mktemp("vis_pipeline")
     bam_path = str(base / "test.bam")
 
@@ -492,7 +510,7 @@ def pipeline_output(tmp_path_factory):
 
 
 class TestVisualiseEndToEnd:
-    """Figures generated from real mapq_softclip output (full BAM → analysis → visualise pipeline)."""
+    """Figures generated from real mapq_softclip output (full BAM to analysis to visualise pipeline)."""
 
     def test_genome_figure_created(self, pipeline_output):
         assert os.path.exists(os.path.join(pipeline_output, "figures", "genome_summary.png"))
@@ -522,3 +540,329 @@ class TestVisualiseEndToEnd:
         # chr1 (MAPQ 60) and chr2 (MAPQ 40) in the same genome view must not crash
         # (verified implicitly by genome_summary.png existing, but made explicit here)
         assert os.path.exists(os.path.join(pipeline_output, "figures", "genome_summary.png"))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# UNIT TESTS - hese visualise utilities
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── _to_float_or_nan ──────────────────────────────────────────────────────────
+
+class TestToFloatOrNan:
+    """Converts numeric values to float and returns nan for anything non-numeric."""
+
+    def test_numeric_string(self):
+        assert _to_float_or_nan("3.14") == pytest.approx(3.14)
+
+    def test_float_passthrough(self):
+        assert _to_float_or_nan(2.5) == pytest.approx(2.5)
+
+    def test_integer_passthrough(self):
+        assert _to_float_or_nan(5) == pytest.approx(5.0)
+
+    def test_zero(self):
+        assert _to_float_or_nan(0) == pytest.approx(0.0)
+
+    def test_na_string_returns_nan(self):
+        assert math.isnan(_to_float_or_nan("NA"))
+
+    def test_none_returns_nan(self):
+        assert math.isnan(_to_float_or_nan(None))
+
+    def test_garbage_string_returns_nan(self):
+        assert math.isnan(_to_float_or_nan("not_a_number"))
+
+    def test_empty_string_returns_nan(self):
+        assert math.isnan(_to_float_or_nan(""))
+
+
+# ── _safe_nanmax ──────────────────────────────────────────────────────────────
+
+class TestSafeNanmax:
+    """Returns max of finite values, or the given default when none are finite."""
+
+    def test_all_finite(self):
+        assert _safe_nanmax([1.0, 2.0, 3.0], default=0.0) == pytest.approx(3.0)
+
+    def test_with_nan_ignored(self):
+        assert _safe_nanmax([1.0, float("nan"), 3.0], default=0.0) == pytest.approx(3.0)
+
+    def test_all_nan_returns_default(self):
+        assert _safe_nanmax([float("nan"), float("nan")], default=99.0) == pytest.approx(99.0)
+
+    def test_empty_list_returns_default(self):
+        assert _safe_nanmax([], default=42.0) == pytest.approx(42.0)
+
+    def test_single_finite_value(self):
+        assert _safe_nanmax([7.0], default=0.0) == pytest.approx(7.0)
+
+    def test_inf_excluded(self):
+        assert _safe_nanmax([1.0, float("inf"), 2.0], default=0.0) == pytest.approx(2.0)
+
+
+# ── _read_min_unitigs ─────────────────────────────────────────────────────────
+
+class TestReadMinUnitigs:
+    """Parses min_unitigs from run_log.txt with a fallback to a default."""
+
+    def test_reads_value_from_log(self, tmp_path):
+        (tmp_path / "run_log.txt").write_text(
+            "Min unitigs (-mu)      : 5\n"
+        )
+        assert _read_min_unitigs(str(tmp_path)) == 5
+
+    def test_missing_file_returns_default(self, tmp_path):
+        assert _read_min_unitigs(str(tmp_path), default=3) == 3
+
+    def test_custom_default_returned_when_no_file(self, tmp_path):
+        assert _read_min_unitigs(str(tmp_path), default=7) == 7
+
+    def test_malformed_value_returns_default(self, tmp_path):
+        (tmp_path / "run_log.txt").write_text(
+            "Min unitigs (-mu)      : not_a_number\n"
+        )
+        assert _read_min_unitigs(str(tmp_path), default=3) == 3
+
+    def test_ignores_unrelated_lines(self, tmp_path):
+        (tmp_path / "run_log.txt").write_text(
+            "Started : 2026-01-01 00:00:00\n"
+            "Min unitigs (-mu)      : 4\n"
+            "Hap frac (-hf)         : 0.60\n"
+        )
+        assert _read_min_unitigs(str(tmp_path)) == 4
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# INTEGRATION TESTS - hese figures
+# ══════════════════════════════════════════════════════════════════════════════
+#
+# Figure functions are called directly with hand-crafted DataFrames.
+# The behavioural contract is "file created, no crash" - pixel content is not tested.
+# Edge cases (empty inputs, NA values) verify graceful handling.
+
+def _make_hese_dfs():
+    """Return (df_uni, df_hap, df_sum) with minimal valid hese output data."""
+    df_uni = pd.DataFrame({
+        "unitig":  ["utg001", "utg002", "utg003"],
+        "p1_norm": [1e-4, 2e-4, 1e-4],
+        "p2_norm": [2e-4, 1e-4, 1e-4],
+        "label":   ["P1", "P2", "amb"],
+    })
+    df_hap = pd.DataFrame({
+        "hap_id":    ["h1tg000001l", "h1tg000002l", "h2tg000001l", "h2tg000002l"],
+        "hap_type":  ["hap1", "hap1", "hap2", "hap2"],
+        "n_unitigs": [10, 10, 10, 10],
+        "n_p1":      [8, 7, 1, 2],
+        "n_p2":      [1, 2, 8, 7],
+        "n_amb":     [1, 1, 1, 1],
+        "label":     ["P1", "P1", "P2", "P2"],
+    })
+    # haplotype_summary has four rows: hap1×P1, hap1×P2, hap2×P1, hap2×P2
+    df_sum = pd.DataFrame({
+        "hap":               ["hap1", "hap1", "hap2", "hap2"],
+        "hap_global_parent": ["P1",   "P1",   "P2",   "P2"  ],
+        "assigned_parent":   ["P1",   "P2",   "P1",   "P2"  ],
+        "n_haplotigs_total": [2, 2, 2, 2],
+        "n_haplotigs_p1":    [2, 2, 0, 0],
+        "n_haplotigs_p2":    [0, 0, 2, 2],
+        "n_haplotigs_amb":   [0, 0, 0, 0],
+        "hamming_struct_%":  [0.0, 100.0, 100.0, 0.0],
+        "switch_struct_%":   [0.0,   0.0,   0.0, 0.0],
+    })
+    return df_uni, df_hap, df_sum
+
+
+def _write_hese_csvs(folder, df_uni, df_hap, df_sum, df_truth_eval=None):
+    """Write hese output CSVs to folder for use with run_hese."""
+    df_uni.to_csv(os.path.join(folder, "unitig_labels.csv"), index=False)
+    df_hap.to_csv(os.path.join(folder, "haplotig_labels.csv"), index=False)
+    df_sum.to_csv(os.path.join(folder, "haplotype_summary.csv"), index=False)
+    if df_truth_eval is not None:
+        df_truth_eval.to_csv(os.path.join(folder, "truth_eval_summary.csv"), index=False)
+
+
+# ── figure file creation ──────────────────────────────────────────────────────
+
+class TestFigHeseFileCreation:
+    """Each hese figure function saves its expected PNG to the figures folder."""
+
+    def test_label_distributions_created(self, tmp_path):
+        df_uni, df_hap, _ = _make_hese_dfs()
+        fig_hese_label_distributions(df_uni, df_hap, str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_label_distributions.png"))
+
+    def test_label_balance_created(self, tmp_path):
+        _, df_hap, _ = _make_hese_dfs()
+        fig_hese_label_balance(df_hap, str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_label_balance.png"))
+
+    def test_signal_penetration_created(self, tmp_path):
+        _, df_hap, _ = _make_hese_dfs()
+        fig_hese_signal_penetration(df_hap, min_unitigs=3, figures_folder=str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_signal_penetration.png"))
+
+    def test_signal_depth_created(self, tmp_path):
+        _, df_hap, _ = _make_hese_dfs()
+        fig_hese_signal_depth(df_hap, str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_signal_depth.png"))
+
+    def test_phasing_errors_no_truth_created(self, tmp_path):
+        _, _, df_sum = _make_hese_dfs()
+        fig_hese_phasing_errors(df_sum, df_truth_eval=None, figures_folder=str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_phasing_errors.png"))
+
+    def test_phasing_errors_with_truth_created(self, tmp_path):
+        _, _, df_sum = _make_hese_dfs()
+        df_truth_eval = pd.DataFrame({
+            "hap1_label": ["P1"], "hap2_label": ["P2"],
+            "overall_wrong": [0], "overall_total": [4],
+            "overall_hamming_%": [0.0],
+            "overall_switches": [0], "overall_boundaries": [3],
+            "overall_switch_%": [0.0],
+        })
+        fig_hese_phasing_errors(df_sum, df_truth_eval, str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_phasing_errors.png"))
+
+    def test_phasing_errors_shared_parent_no_crash(self, tmp_path):
+        # Both hap1 and hap2 claim P1, title turns red, must not crash
+        df_sum = pd.DataFrame({
+            "hap":               ["hap1", "hap1", "hap2", "hap2"],
+            "hap_global_parent": ["P1",   "P1",   "P1",   "P1"  ],
+            "assigned_parent":   ["P1",   "P2",   "P1",   "P2"  ],
+            "n_haplotigs_total": [2, 2, 2, 2],
+            "n_haplotigs_p1":    [2, 2, 2, 2],
+            "n_haplotigs_p2":    [0, 0, 0, 0],
+            "n_haplotigs_amb":   [0, 0, 0, 0],
+            "hamming_struct_%":  [0.0, 100.0, 0.0, 100.0],
+            "switch_struct_%":   [0.0,   0.0, 0.0,   0.0],
+        })
+        fig_hese_phasing_errors(df_sum, df_truth_eval=None, figures_folder=str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_phasing_errors.png"))
+
+
+# ── edge cases ────────────────────────────────────────────────────────────────
+
+class TestFigHeseEdgeCases:
+    """Empty inputs skip with a warning; NA metric values do not crash."""
+
+    def test_label_balance_empty_df_warns_and_skips(self, tmp_path, capsys):
+        df_hap = pd.DataFrame(columns=["hap_id", "hap_type", "n_unitigs",
+                                        "n_p1", "n_p2", "n_amb", "label"])
+        fig_hese_label_balance(df_hap, str(tmp_path))
+        assert "[WARN]" in capsys.readouterr().out
+        assert not os.path.exists(os.path.join(str(tmp_path), "hese_label_balance.png"))
+
+    def test_signal_penetration_empty_df_warns_and_skips(self, tmp_path, capsys):
+        df_hap = pd.DataFrame(columns=["hap_id", "hap_type", "n_unitigs",
+                                        "n_p1", "n_p2", "n_amb", "label"])
+        fig_hese_signal_penetration(df_hap, min_unitigs=3, figures_folder=str(tmp_path))
+        assert "[WARN]" in capsys.readouterr().out
+        assert not os.path.exists(os.path.join(str(tmp_path), "hese_signal_penetration.png"))
+
+    def test_signal_depth_all_amb_warns_and_skips(self, tmp_path, capsys):
+        # No P1/P2 labeled haplotigs, signal depth must warn and skip
+        df_hap = pd.DataFrame({
+            "hap_id": ["h1", "h2"], "hap_type": ["hap1", "hap2"],
+            "n_unitigs": [5, 5], "n_p1": [0, 0], "n_p2": [0, 0], "n_amb": [5, 5],
+            "label": ["amb", "amb"],
+        })
+        fig_hese_signal_depth(df_hap, str(tmp_path))
+        assert "[WARN]" in capsys.readouterr().out
+        assert not os.path.exists(os.path.join(str(tmp_path), "hese_signal_depth.png"))
+
+    def test_phasing_errors_na_metrics_no_crash(self, tmp_path):
+        # hamming_struct_% and switch_struct_% are "NA", must not crash
+        df_sum = pd.DataFrame({
+            "hap":               ["hap1", "hap1", "hap2", "hap2"],
+            "hap_global_parent": ["P1",   "P1",   "P2",   "P2"  ],
+            "assigned_parent":   ["P1",   "P2",   "P1",   "P2"  ],
+            "n_haplotigs_total": [1, 1, 1, 1],
+            "n_haplotigs_p1":    [1, 1, 0, 0],
+            "n_haplotigs_p2":    [0, 0, 1, 1],
+            "n_haplotigs_amb":   [0, 0, 0, 0],
+            "hamming_struct_%":  ["NA", "NA", "NA", "NA"],
+            "switch_struct_%":   ["NA", "NA", "NA", "NA"],
+        })
+        fig_hese_phasing_errors(df_sum, df_truth_eval=None, figures_folder=str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_phasing_errors.png"))
+
+    def test_phasing_errors_truth_na_switch_no_crash(self, tmp_path):
+        # truth_eval_summary has overall_switch_% = "NA" (no boundaries), must not crash
+        _, _, df_sum = _make_hese_dfs()
+        df_truth_eval = pd.DataFrame({
+            "hap1_label": ["P1"], "hap2_label": ["P2"],
+            "overall_wrong": [0], "overall_total": [0],
+            "overall_hamming_%": ["NA"],
+            "overall_switches": [0], "overall_boundaries": [0],
+            "overall_switch_%": ["NA"],
+        })
+        fig_hese_phasing_errors(df_sum, df_truth_eval, str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_phasing_errors.png"))
+
+    def test_phasing_errors_amb_global_parent_no_crash(self, tmp_path):
+        # hap_global_parent = "amb" means no best row matches, hap skipped, blank figure
+        df_sum = pd.DataFrame({
+            "hap":               ["hap1", "hap1", "hap2", "hap2"],
+            "hap_global_parent": ["amb",  "amb",  "amb",  "amb" ],
+            "assigned_parent":   ["P1",   "P2",   "P1",   "P2"  ],
+            "n_haplotigs_total": [1, 1, 1, 1],
+            "n_haplotigs_p1":    [0, 0, 0, 0],
+            "n_haplotigs_p2":    [0, 0, 0, 0],
+            "n_haplotigs_amb":   [1, 1, 1, 1],
+            "hamming_struct_%":  ["NA", "NA", "NA", "NA"],
+            "switch_struct_%":   ["NA", "NA", "NA", "NA"],
+        })
+        fig_hese_phasing_errors(df_sum, df_truth_eval=None, figures_folder=str(tmp_path))
+        assert os.path.exists(os.path.join(str(tmp_path), "hese_phasing_errors.png"))
+
+
+# ── run_hese end-to-end ───────────────────────────────────────────────────────
+
+class TestRunHese:
+    """run_hese generates all expected figures from a valid hese output folder."""
+
+    def test_all_core_figures_created(self, tmp_path):
+        df_uni, df_hap, df_sum = _make_hese_dfs()
+        _write_hese_csvs(str(tmp_path), df_uni, df_hap, df_sum)
+        run_hese(str(tmp_path))
+        figs = tmp_path / "figures"
+        assert (figs / "hese_label_distributions.png").exists()
+        assert (figs / "hese_label_balance.png").exists()
+        assert (figs / "hese_signal_penetration.png").exists()
+        assert (figs / "hese_signal_depth.png").exists()
+        assert (figs / "hese_phasing_errors.png").exists()
+
+    def test_with_truth_eval_no_crash(self, tmp_path):
+        df_uni, df_hap, df_sum = _make_hese_dfs()
+        df_truth_eval = pd.DataFrame({
+            "hap1_label": ["P1"], "hap2_label": ["P2"],
+            "overall_wrong": [0], "overall_total": [4],
+            "overall_hamming_%": [0.0],
+            "overall_switches": [0], "overall_boundaries": [3],
+            "overall_switch_%": [0.0],
+        })
+        _write_hese_csvs(str(tmp_path), df_uni, df_hap, df_sum, df_truth_eval)
+        run_hese(str(tmp_path))
+        assert (tmp_path / "figures" / "hese_phasing_errors.png").exists()
+
+    def test_with_truth_na_values_no_crash(self, tmp_path):
+        # truth_eval_summary.csv with NA switch/hamming must not crash run_hese
+        df_uni, df_hap, df_sum = _make_hese_dfs()
+        df_truth_eval = pd.DataFrame({
+            "hap1_label": ["P1"], "hap2_label": ["P2"],
+            "overall_wrong": [0], "overall_total": [0],
+            "overall_hamming_%": ["NA"],
+            "overall_switches": [0], "overall_boundaries": [0],
+            "overall_switch_%": ["NA"],
+        })
+        _write_hese_csvs(str(tmp_path), df_uni, df_hap, df_sum, df_truth_eval)
+        run_hese(str(tmp_path))
+        assert (tmp_path / "figures" / "hese_phasing_errors.png").exists()
+
+    def test_missing_required_file_exits(self, tmp_path):
+        # haplotig_labels.csv missing, check_input should catch this before run_hese
+        df_uni, _, df_sum = _make_hese_dfs()
+        df_uni.to_csv(os.path.join(str(tmp_path), "unitig_labels.csv"), index=False)
+        df_sum.to_csv(os.path.join(str(tmp_path), "haplotype_summary.csv"), index=False)
+        with pytest.raises(SystemExit):
+            check_input(str(tmp_path), "hese")
